@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CropSense — Smart Crop Advisor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --soil:    #3b2a1a;
+      --earth:   #6b4c2a;
+      --sage:    #7a9e7e;
+      --leaf:    #4a7c59;
+      --gold:    #d4a843;
+      --offwhite:#faf7f2;
+      --mist:    #e8e2d6;
+      --shadow:  rgba(59,42,26,0.15);
+      --blue:    #3b7fc4;
+      --red:     #c0392b;
+      --orange:  #e07b2a;
+    }
+    body { font-family:'DM Sans',sans-serif; background:var(--offwhite); color:var(--soil); min-height:100vh; overflow-x:hidden; }
+    body::before {
+      content:''; position:fixed; inset:0; z-index:-1;
+      background:
+        radial-gradient(ellipse 80% 60% at 10% 20%,rgba(122,158,126,.12) 0%,transparent 60%),
+        radial-gradient(ellipse 60% 80% at 90% 80%,rgba(212,168,67,.08) 0%,transparent 60%),
+        var(--offwhite);
+    }
+    header { padding:1.5rem 2.5rem; display:flex; align-items:center; justify-content:space-between; border-bottom:1.5px solid var(--mist); flex-wrap:wrap; gap:1rem; }
+    .logo { display:flex; align-items:flex-end; gap:.9rem; }
+    .logo-mark { width:44px;height:44px;background:var(--leaf);border-radius:11px;display:grid;place-items:center;font-size:1.4rem;flex-shrink:0;box-shadow:0 4px 14px rgba(74,124,89,.3); }
+    .logo-text h1 { font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:900;letter-spacing:-.02em;line-height:1; }
+    .logo-text p { font-size:.75rem;color:var(--earth);letter-spacing:.08em;text-transform:uppercase;font-weight:300;margin-top:2px; }
+    .lang-switcher { display:flex;align-items:center;gap:.6rem; }
+    .lang-label { font-size:.72rem;color:var(--earth);text-transform:uppercase;letter-spacing:.08em;font-weight:500;white-space:nowrap; }
+    .lang-select { border:1.5px solid var(--mist);border-radius:10px;padding:.45rem 2.2rem .45rem .85rem;font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:500;color:var(--soil);background:white;cursor:pointer;outline:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b4c2a' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .75rem center;transition:border-color .2s,box-shadow .2s; }
+    .lang-select:hover { border-color:var(--sage); }
+    .lang-select:focus { border-color:var(--sage);box-shadow:0 0 0 3px rgba(122,158,126,.15); }
+    .tab-bar { display:flex;gap:0;border-bottom:2px solid var(--mist);padding:0 2.5rem;background:white; }
+    .tab-btn { padding:1rem 1.6rem;font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:500;background:none;border:none;cursor:pointer;color:var(--earth);border-bottom:3px solid transparent;margin-bottom:-2px;transition:color .18s,border-color .18s;display:flex;align-items:center;gap:.5rem; }
+    .tab-btn:hover { color:var(--leaf); }
+    .tab-btn.active { color:var(--leaf);border-bottom-color:var(--leaf);font-weight:600; }
+    main { max-width:900px;margin:0 auto;padding:2.5rem 2rem 5rem; }
+    .tab-panel { display:none; }
+    .tab-panel.active { display:block; }
+    .hero { margin-bottom:2rem; }
+    .hero h2 { font-family:'Playfair Display',serif;font-size:clamp(1.7rem,4.5vw,2.8rem);font-weight:700;line-height:1.15;max-width:560px; }
+    .hero h2 em { font-style:normal;color:var(--leaf); }
+    .hero p { margin-top:.8rem;color:var(--earth);font-size:.95rem;font-weight:300;max-width:500px;line-height:1.7; }
+    .steps { display:flex;align-items:center;margin-bottom:1.8rem; }
+    .step { display:flex;align-items:center;gap:.45rem;font-size:.75rem;font-weight:500;letter-spacing:.05em;text-transform:uppercase;color:#bbb; }
+    .step.active { color:var(--leaf); }
+    .step.done { color:var(--gold); }
+    .step-num { width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:.7rem;font-weight:700;background:#e8e2d6;color:#999;flex-shrink:0; }
+    .step.active .step-num { background:var(--leaf);color:white; }
+    .step.done .step-num { background:var(--gold);color:white; }
+    .step-sep { width:28px;height:1.5px;background:var(--mist);margin:0 .4rem;flex-shrink:0; }
+    .card { background:white;border:1.5px solid var(--mist);border-radius:20px;padding:2rem 2.5rem;box-shadow:0 6px 36px var(--shadow);margin-bottom:1.4rem; }
+    .card-title { font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;margin-bottom:1.4rem;display:flex;align-items:center;gap:.6rem; }
+    .card-title::before { content:'';width:16px;height:3px;background:var(--gold);border-radius:2px; }
+    .location-row { display:flex;gap:.8rem;align-items:flex-start; }
+    .location-input-wrap { flex:1;position:relative; }
+    .location-input-wrap input { width:100%;border:1.5px solid var(--mist);border-radius:10px;padding:.72rem 1rem .72rem 2.5rem;font-family:'DM Sans',sans-serif;font-size:.95rem;color:var(--soil);background:var(--offwhite);outline:none;transition:border-color .2s,box-shadow .2s; }
+    .location-input-wrap input:focus { border-color:var(--sage);box-shadow:0 0 0 3px rgba(122,158,126,.15);background:white; }
+    .location-icon { position:absolute;left:.85rem;top:50%;transform:translateY(-50%);font-size:.95rem;pointer-events:none; }
+    .autocomplete-list { position:absolute;top:calc(100% + 4px);left:0;right:0;background:white;border:1.5px solid var(--mist);border-radius:10px;box-shadow:0 8px 24px var(--shadow);z-index:100;max-height:220px;overflow-y:auto; }
+    .autocomplete-item { padding:.65rem 1rem;font-size:.88rem;cursor:pointer;border-bottom:1px solid var(--mist);transition:background .15s; }
+    .autocomplete-item:last-child { border-bottom:none; }
+    .autocomplete-item:hover,.autocomplete-item.selected { background:var(--offwhite); }
+    .autocomplete-item .city { font-weight:500; }
+    .autocomplete-item .region { color:var(--earth);font-size:.78rem; }
+    .btn-fetch { padding:.72rem 1.3rem;background:var(--blue);color:white;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:500;cursor:pointer;white-space:nowrap;transition:background .2s,transform .15s;box-shadow:0 3px 12px rgba(59,127,196,.28);display:flex;align-items:center;gap:.4rem; }
+    .btn-fetch:hover { background:#2e6aab;transform:translateY(-1px); }
+    .btn-fetch:active { transform:translateY(0); }
+    .btn-fetch:disabled { opacity:.6;pointer-events:none; }
+    .status-msg { font-size:.82rem;margin-top:.75rem;padding:.45rem .8rem;border-radius:8px;display:none; }
+    .status-msg.info    { background:#e8f4fd;color:#2563a8;display:block; }
+    .status-msg.success { background:rgba(122,158,126,.12);color:var(--leaf);display:block; }
+    .status-msg.error   { background:#fff3f3;color:var(--red);display:block; }
+    .weather-pills { display:flex;gap:.7rem;flex-wrap:wrap;margin-top:.9rem; }
+    .weather-pill { display:flex;align-items:center;gap:.45rem;background:var(--offwhite);border:1.5px solid var(--mist);border-radius:50px;padding:.38rem .9rem;font-size:.83rem;transition:border-color .3s,background .3s; }
+    .weather-pill .pill-label { color:var(--earth);font-size:.73rem; }
+    .weather-pill .pill-val { font-weight:500; }
+    .weather-pill.fetched { border-color:var(--sage);background:rgba(122,158,126,.08); }
+    .section-label { font-size:.72rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--earth);margin-bottom:1rem;display:flex;align-items:center;gap:.5rem; }
+    .section-label::after { content:'';flex:1;height:1px;background:var(--mist); }
+    .field-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:1.2rem; }
+    .field { display:flex;flex-direction:column;gap:.4rem; }
+    .field label { font-size:.7rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--earth); }
+    .field .hint { font-size:.67rem;color:#aaa;margin-top:-.15rem; }
+    .field input,.field select { border:1.5px solid var(--mist);border-radius:10px;padding:.68rem 1rem;font-family:'DM Sans',sans-serif;font-size:.93rem;color:var(--soil);background:var(--offwhite);outline:none;transition:border-color .2s,box-shadow .2s,background .3s; }
+    .field input:not([readonly]):focus,.field select:focus { border-color:var(--sage);box-shadow:0 0 0 3px rgba(122,158,126,.15);background:white; }
+    .field input.auto-filled { border-color:var(--sage);background:rgba(122,158,126,.07);color:var(--leaf);font-weight:500; }
+    .field input[readonly] { cursor:default; }
+    .field input::placeholder { color:#c8bfb0; }
+    .field select { appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b4c2a' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 1rem center;padding-right:2.5rem;cursor:pointer; }
+    .divider { height:1.5px;background:var(--mist);margin:1.8rem 0;border-radius:2px; }
+    .crop-input-wrap { position:relative; }
+    .crop-input-wrap input { width:100%; }
+    .btn-primary { display:flex;align-items:center;justify-content:center;gap:.6rem;width:100%;padding:1rem;background:var(--leaf);color:white;font-family:'DM Sans',sans-serif;font-size:1rem;font-weight:500;border:none;border-radius:12px;cursor:pointer;transition:background .2s,transform .15s,box-shadow .2s;box-shadow:0 4px 18px rgba(74,124,89,.3); }
+    .btn-primary:hover { background:#3d6b49;box-shadow:0 6px 24px rgba(74,124,89,.4);transform:translateY(-1px); }
+    .btn-primary:active { transform:translateY(0); }
+    .btn-primary.loading { opacity:.7;pointer-events:none; }
+    #predict-result { margin-top:1.8rem;display:none;animation:fadeUp .4s ease; }
+    #yield-result   { margin-top:1.8rem;display:none;animation:fadeUp .4s ease; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);} }
+    .result-card { background:linear-gradient(135deg,var(--leaf) 0%,#3d6b49 100%);color:white;border-radius:16px;padding:1.8rem;box-shadow:0 8px 32px rgba(74,124,89,.35); }
+    .result-top { display:flex;align-items:center;gap:1.4rem; }
+    .crop-icon { font-size:2.8rem;flex-shrink:0;filter:drop-shadow(0 2px 8px rgba(0,0,0,.2)); }
+    .result-text .rlabel { font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;opacity:.75; }
+    .result-text .crop-name { font-family:'Playfair Display',serif;font-size:2rem;font-weight:900;line-height:1.1;text-transform:capitalize; }
+    .result-text .location-used { font-size:.78rem;opacity:.7;margin-top:.2rem; }
+    .confidence-bar-wrap { margin-top:.6rem;display:flex;align-items:center;gap:.7rem; }
+    .confidence-bar-bg { flex:1;height:6px;background:rgba(255,255,255,.2);border-radius:3px;overflow:hidden; }
+    .confidence-bar-fill { height:100%;background:var(--gold);border-radius:3px;transition:width .8s cubic-bezier(.22,.61,.36,1); }
+    .confidence-pct { font-size:.82rem;font-weight:500;opacity:.9;white-space:nowrap; }
+    .conf-explain { margin-top:.65rem;font-size:.82rem;line-height:1.55;opacity:.88;font-weight:300;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:.55rem .8rem; }
+    .conf-explain strong { font-weight:600; }
+    .conf-explain em { font-style:normal;text-decoration:underline;text-underline-offset:2px; }
+    .explanation-box { margin-top:1.2rem;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.22);border-radius:12px;padding:1rem 1.2rem; }
+    .exp-label { font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;opacity:.75;margin-bottom:.55rem;display:flex;align-items:center;gap:.4rem; }
+    .exp-text { font-size:.97rem;line-height:1.7;opacity:.97;font-weight:300; }
+    .yield-card { border-radius:16px;padding:1.8rem;color:white;box-shadow:0 8px 32px rgba(0,0,0,.2); }
+    .yield-card.green  { background:linear-gradient(135deg,#4a7c59,#3d6b49); }
+    .yield-card.yellow { background:linear-gradient(135deg,#b8922a,#9a7820); }
+    .yield-card.orange { background:linear-gradient(135deg,#c0622a,#a04f1e); }
+    .yield-card.red    { background:linear-gradient(135deg,#c0392b,#a02d23); }
+    .yield-top { display:flex;align-items:center;gap:1.4rem;margin-bottom:1.2rem; }
+    .yield-icon { font-size:2.8rem;flex-shrink:0;filter:drop-shadow(0 2px 8px rgba(0,0,0,.2)); }
+    .yield-meta .rlabel { font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;opacity:.75; }
+    .yield-meta .yield-crop { font-family:'Playfair Display',serif;font-size:2rem;font-weight:900;line-height:1.1;text-transform:capitalize; }
+    .yield-meta .yield-outlook { font-size:1rem;font-weight:600;margin-top:.1rem;opacity:.95; }
+    .yield-stats { display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1.2rem; }
+    .yield-stat { flex:1;min-width:100px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:.7rem 1rem;text-align:center; }
+    .yield-stat .stat-val { font-size:1.5rem;font-weight:700;line-height:1; }
+    .yield-stat .stat-label { font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;opacity:.75;margin-top:.2rem; }
+    .yield-analysis-box { background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.22);border-radius:12px;padding:1rem 1.2rem; }
+    .yield-analysis-box .exp-label { font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;opacity:.75;margin-bottom:.55rem;display:flex;align-items:center;gap:.4rem; }
+    .yield-analysis-box .exp-text { font-size:.97rem;line-height:1.7;opacity:.97;font-weight:300; }
+    .exp-loading { display:flex;align-items:center;gap:.5rem;opacity:.75;font-size:.9rem; }
+    .spinner { width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:white;border-radius:50%;animation:spin .8s linear infinite; }
+    @keyframes spin { to{transform:rotate(360deg);} }
+    .error-card { background:#fff3f3;border:1.5px solid #fcc;color:var(--red);border-radius:12px;padding:1rem 1.3rem;font-size:.9rem; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">🌾</div>
+    <div class="logo-text">
+      <h1>CropSense</h1>
+      <p data-i18n="tagline">AI-Powered Crop Advisor</p>
+    </div>
+  </div>
+  <div class="lang-switcher">
+    <span class="lang-label">🌐</span>
+    <select class="lang-select" id="langSelect" onchange="setLang(this)">
+      <option value="English">English</option>
+      <option value="Hindi">हिन्दी — Hindi</option>
+      <option value="Telugu">తెలుగు — Telugu</option>
+      <option value="Tamil">தமிழ் — Tamil</option>
+      <option value="Kannada">ಕನ್ನಡ — Kannada</option>
+      <option value="Marathi">मराठी — Marathi</option>
+      <option value="Bengali">বাংলা — Bengali</option>
+      <option value="Punjabi">ਪੰਜਾਬੀ — Punjabi</option>
+      <option value="Gujarati">ગુજરાતી — Gujarati</option>
+      <option value="Odia">ଓଡ଼ିଆ — Odia</option>
+    </select>
+  </div>
+</header>
+
+<div class="tab-bar">
+  <button class="tab-btn active" id="tab-btn-predict" onclick="switchTab('predict',this)" data-i18n="tab_predict">🌱 Predict Best Crop</button>
+  <button class="tab-btn" id="tab-btn-yield" onclick="switchTab('yield',this)" data-i18n="tab_yield">🔍 Yield Query</button>
+</div>
+
+<main>
+
+  <!-- TAB 1: PREDICT -->
+  <div class="tab-panel active" id="tab-predict">
+    <div class="hero">
+      <h2 data-i18n="p_hero_h2">Find the <em>perfect crop</em> for your field</h2>
+      <p data-i18n="p_hero_p">Type your village or district — we'll auto-fetch the weather. Add your soil values and get a recommendation with explanation in your language.</p>
+    </div>
+    <div class="steps">
+      <div class="step active" id="p-step1"><div class="step-num">1</div> <span data-i18n="step_location">Location</span></div>
+      <div class="step-sep"></div>
+      <div class="step" id="p-step2"><div class="step-num">2</div> <span data-i18n="step_soil">Soil Values</span></div>
+      <div class="step-sep"></div>
+      <div class="step" id="p-step3"><div class="step-num">3</div> <span data-i18n="step_result">Result</span></div>
+    </div>
+    <div class="card">
+      <div class="card-title" data-i18n="your_location">Your Location</div>
+      <div class="location-row">
+        <div class="location-input-wrap">
+          <span class="location-icon">📍</span>
+          <input type="text" id="p-locationInput" data-i18n-placeholder="location_placeholder" placeholder="Type your village, town or district…" autocomplete="off"
+            oninput="onLocationInput('p')" onkeydown="onLocationKey(event,'p')"/>
+          <div class="autocomplete-list" id="p-autocompleteList" style="display:none"></div>
+        </div>
+        <button class="btn-fetch" id="p-fetchBtn" onclick="fetchWeather('p')"><span>☁️</span> <span data-i18n="fetch_weather">Fetch Weather</span></button>
+      </div>
+      <div class="status-msg" id="p-locationStatus"></div>
+      <div class="weather-pills">
+        <div class="weather-pill" id="p-pill-temp"><span>🌡️</span><span class="pill-label" data-i18n="temperature">Temperature</span><span class="pill-val" id="p-pill-temp-val">—</span></div>
+        <div class="weather-pill" id="p-pill-hum"><span>💧</span><span class="pill-label" data-i18n="humidity">Humidity</span><span class="pill-val" id="p-pill-hum-val">—</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-label" data-i18n="from_shc">From Soil Health Card</div>
+      <div class="field-grid">
+        <div class="field"><label data-i18n="nitrogen">Nitrogen (N)</label><span class="hint" data-i18n="n_hint">mg/kg · 0–140</span><input type="number" id="p-N" data-i18n-placeholder="eg_90" placeholder="e.g. 90" step="any"/></div>
+        <div class="field"><label data-i18n="phosphorus">Phosphorus (P)</label><span class="hint" data-i18n="p_hint">mg/kg · 5–145</span><input type="number" id="p-P" data-i18n-placeholder="eg_42" placeholder="e.g. 42" step="any"/></div>
+        <div class="field"><label data-i18n="potassium">Potassium (K)</label><span class="hint" data-i18n="k_hint">mg/kg · 5–205</span><input type="number" id="p-K" data-i18n-placeholder="eg_43" placeholder="e.g. 43" step="any"/></div>
+        <div class="field"><label data-i18n="soil_ph">Soil pH</label><span class="hint" data-i18n="ph_hint">0–14 · typical 5.5–8</span><input type="number" id="p-ph" data-i18n-placeholder="eg_65" placeholder="e.g. 6.5" step="any"/></div>
+      </div>
+      <div class="divider"></div>
+      <div class="section-label" data-i18n="auto_climate">Auto-fetched Climate Data</div>
+      <div class="field-grid" style="margin-bottom:1.8rem">
+        <div class="field"><label data-i18n="temperature_c">Temperature (°C)</label><span class="hint" data-i18n="auto_hint">Auto-filled from weather API</span><input type="number" id="p-temperature" data-i18n-placeholder="fetch_hint" placeholder="Fetch location ↑" step="any" readonly/></div>
+        <div class="field"><label data-i18n="humidity_pct">Humidity (%)</label><span class="hint" data-i18n="auto_hint">Auto-filled from weather API</span><input type="number" id="p-humidity" data-i18n-placeholder="fetch_hint" placeholder="Fetch location ↑" step="any" readonly/></div>
+        <div class="field"><label data-i18n="annual_rain">Annual Rainfall (mm)</label><span class="hint" data-i18n="rain_hint">Enter your region's yearly average</span><input type="number" id="p-rainfall" data-i18n-placeholder="eg_200" placeholder="e.g. 200" step="any"/></div>
+      </div>
+      <button class="btn-primary" id="p-predictBtn" onclick="runPredict()"><span>🌱</span> <span data-i18n="predict_btn">Predict Best Crop</span></button>
+      <div id="predict-result"></div>
+    </div>
+  </div>
+
+  <!-- TAB 2: YIELD QUERY -->
+  <div class="tab-panel" id="tab-yield">
+    <div class="hero">
+      <h2 data-i18n="y_hero_h2">Check yield for <em>your chosen crop</em></h2>
+      <p data-i18n="y_hero_p">Already have a crop in mind? Enter it along with your field's soil and climate data — we'll tell you how good the yield is likely to be.</p>
+    </div>
+    <div class="steps">
+      <div class="step active" id="y-step1"><div class="step-num">1</div> <span data-i18n="step_location">Location</span></div>
+      <div class="step-sep"></div>
+      <div class="step" id="y-step2"><div class="step-num">2</div> <span data-i18n="step_crop_soil">Crop & Soil</span></div>
+      <div class="step-sep"></div>
+      <div class="step" id="y-step3"><div class="step-num">3</div> <span data-i18n="step_yield_report">Yield Report</span></div>
+    </div>
+    <div class="card">
+      <div class="card-title" data-i18n="your_location">Your Location</div>
+      <div class="location-row">
+        <div class="location-input-wrap">
+          <span class="location-icon">📍</span>
+          <input type="text" id="y-locationInput" data-i18n-placeholder="location_placeholder" placeholder="Type your village, town or district…" autocomplete="off"
+            oninput="onLocationInput('y')" onkeydown="onLocationKey(event,'y')"/>
+          <div class="autocomplete-list" id="y-autocompleteList" style="display:none"></div>
+        </div>
+        <button class="btn-fetch" id="y-fetchBtn" onclick="fetchWeather('y')"><span>☁️</span> <span data-i18n="fetch_weather">Fetch Weather</span></button>
+      </div>
+      <div class="status-msg" id="y-locationStatus"></div>
+      <div class="weather-pills">
+        <div class="weather-pill" id="y-pill-temp"><span>🌡️</span><span class="pill-label" data-i18n="temperature">Temperature</span><span class="pill-val" id="y-pill-temp-val">—</span></div>
+        <div class="weather-pill" id="y-pill-hum"><span>💧</span><span class="pill-label" data-i18n="humidity">Humidity</span><span class="pill-val" id="y-pill-hum-val">—</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-label" data-i18n="crop_to_grow">Crop You Want to Grow</div>
+      <div class="field-grid" style="margin-bottom:1.4rem">
+        <div class="field" style="grid-column:1/-1">
+          <label data-i18n="crop_name">Crop Name</label>
+          <span class="hint" data-i18n="crop_hint">Type or pick from the list</span>
+          <div class="crop-input-wrap">
+            <input type="text" id="y-crop" data-i18n-placeholder="crop_placeholder" placeholder="e.g. rice, maize, banana…" list="crop-list" autocomplete="off"/>
+            <datalist id="crop-list">
+              <option value="apple"/><option value="banana"/><option value="blackgram"/>
+              <option value="chickpea"/><option value="coconut"/><option value="coffee"/>
+              <option value="cotton"/><option value="grapes"/><option value="jute"/>
+              <option value="kidneybeans"/><option value="lentil"/><option value="maize"/>
+              <option value="mango"/><option value="mothbeans"/><option value="mungbean"/>
+              <option value="muskmelon"/><option value="orange"/><option value="papaya"/>
+              <option value="pigeonpeas"/><option value="pomegranate"/><option value="rice"/>
+              <option value="watermelon"/>
+            </datalist>
+          </div>
+        </div>
+      </div>
+      <div class="section-label" data-i18n="from_shc">From Soil Health Card</div>
+      <div class="field-grid">
+        <div class="field"><label data-i18n="nitrogen">Nitrogen (N)</label><span class="hint" data-i18n="n_hint">mg/kg · 0–140</span><input type="number" id="y-N" data-i18n-placeholder="eg_90" placeholder="e.g. 90" step="any"/></div>
+        <div class="field"><label data-i18n="phosphorus">Phosphorus (P)</label><span class="hint" data-i18n="p_hint">mg/kg · 5–145</span><input type="number" id="y-P" data-i18n-placeholder="eg_42" placeholder="e.g. 42" step="any"/></div>
+        <div class="field"><label data-i18n="potassium">Potassium (K)</label><span class="hint" data-i18n="k_hint">mg/kg · 5–205</span><input type="number" id="y-K" data-i18n-placeholder="eg_43" placeholder="e.g. 43" step="any"/></div>
+        <div class="field"><label data-i18n="soil_ph">Soil pH</label><span class="hint" data-i18n="ph_hint">0–14 · typical 5.5–8</span><input type="number" id="y-ph" data-i18n-placeholder="eg_65" placeholder="e.g. 6.5" step="any"/></div>
+      </div>
+      <div class="divider"></div>
+      <div class="section-label" data-i18n="auto_climate">Auto-fetched Climate Data</div>
+      <div class="field-grid" style="margin-bottom:1.8rem">
+        <div class="field"><label data-i18n="temperature_c">Temperature (°C)</label><span class="hint" data-i18n="auto_hint">Auto-filled from weather API</span><input type="number" id="y-temperature" data-i18n-placeholder="fetch_hint" placeholder="Fetch location ↑" step="any" readonly/></div>
+        <div class="field"><label data-i18n="humidity_pct">Humidity (%)</label><span class="hint" data-i18n="auto_hint">Auto-filled from weather API</span><input type="number" id="y-humidity" data-i18n-placeholder="fetch_hint" placeholder="Fetch location ↑" step="any" readonly/></div>
+        <div class="field"><label data-i18n="annual_rain">Annual Rainfall (mm)</label><span class="hint" data-i18n="rain_hint">Enter your region's yearly average</span><input type="number" id="y-rainfall" data-i18n-placeholder="eg_200" placeholder="e.g. 200" step="any"/></div>
+      </div>
+      <button class="btn-primary" id="y-queryBtn" onclick="runYieldQuery()"><span>🔍</span> <span data-i18n="yield_btn">Check Yield Outlook</span></button>
+      <div id="yield-result"></div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+/* ─────────────────────────────────────────────
+   UI STRINGS — all visible text, every language
+───────────────────────────────────────────── */
+const UI = {
+  English: {
+    tagline:'AI-Powered Crop Advisor', tab_predict:'🌱 Predict Best Crop', tab_yield:'🔍 Yield Query',
+    p_hero_h2:'Find the <em>perfect crop</em> for your field',
+    p_hero_p:"Type your village or district — we'll auto-fetch the weather. Add your soil values and get a recommendation with explanation in your language.",
+    y_hero_h2:'Check yield for <em>your chosen crop</em>',
+    y_hero_p:"Already have a crop in mind? Enter it along with your field's soil and climate data — we'll tell you how good the yield is likely to be.",
+    step_location:'Location', step_soil:'Soil Values', step_result:'Result',
+    step_crop_soil:'Crop & Soil', step_yield_report:'Yield Report',
+    your_location:'Your Location', fetch_weather:'Fetch Weather',
+    location_placeholder:'Type your village, town or district…',
+    temperature:'Temperature', humidity:'Humidity',
+    from_shc:'From Soil Health Card', auto_climate:'Auto-fetched Climate Data',
+    nitrogen:'Nitrogen (N)', n_hint:'mg/kg · 0–140', eg_90:'e.g. 90',
+    phosphorus:'Phosphorus (P)', p_hint:'mg/kg · 5–145', eg_42:'e.g. 42',
+    potassium:'Potassium (K)', k_hint:'mg/kg · 5–205', eg_43:'e.g. 43',
+    soil_ph:'Soil pH', ph_hint:'0–14 · typical 5.5–8', eg_65:'e.g. 6.5',
+    temperature_c:'Temperature (°C)', humidity_pct:'Humidity (%)',
+    auto_hint:'Auto-filled from weather API', fetch_hint:'Fetch location ↑',
+    annual_rain:'Annual Rainfall (mm)', rain_hint:"Enter your region's yearly average", eg_200:'e.g. 200',
+    predict_btn:'Predict Best Crop', yield_btn:'Check Yield Outlook',
+    crop_to_grow:'Crop You Want to Grow', crop_name:'Crop Name',
+    crop_hint:'Type or pick from the list', crop_placeholder:'e.g. rice, maize, banana…',
+    rec_crop:'Recommended Crop', why_crop:'💡 Why this crop?',
+    yield_outlook_for:'Yield Outlook For', yield_analysis:'📋 Yield Analysis',
+    suitability:'How well your conditions match', best_for_field:'Best crop for your field right now',
+    conf_strong:'Your conditions are a strong match.',
+    conf_borderline:'Conditions are mostly suitable, but a few factors are borderline.',
+    conf_partial:'Conditions partially match — manage carefully.',
+    conf_msg:'The model compared your soil & climate against all 22 crops — it is',
+    conf_sure:'sure that',
+    conf_best:'is the best fit for your field.',
+    analyzing:'Analyzing…', checking:'Checking…',
+    generating:'Generating explanation in',
+  },
+  Hindi: {
+    tagline:'AI-संचालित फसल सलाहकार', tab_predict:'🌱 सर्वश्रेष्ठ फसल खोजें', tab_yield:'🔍 उपज जाँच',
+    p_hero_h2:'अपने खेत के लिए <em>सही फसल</em> खोजें',
+    p_hero_p:'अपना गाँव या जिला टाइप करें — हम मौसम जानकारी लाएंगे। अपनी मिट्टी के मान दर्ज करें और अपनी भाषा में सिफारिश पाएं।',
+    y_hero_h2:'अपनी <em>चुनी हुई फसल</em> की उपज जाँचें',
+    y_hero_p:'क्या आपके मन में पहले से कोई फसल है? मिट्टी और जलवायु डेटा के साथ दर्ज करें और जानें उपज कैसी रहेगी।',
+    step_location:'स्थान', step_soil:'मिट्टी के मान', step_result:'परिणाम',
+    step_crop_soil:'फसल और मिट्टी', step_yield_report:'उपज रिपोर्ट',
+    your_location:'आपका स्थान', fetch_weather:'मौसम लाएं',
+    location_placeholder:'अपना गाँव, शहर या जिला टाइप करें…',
+    temperature:'तापमान', humidity:'आर्द्रता',
+    from_shc:'मृदा स्वास्थ्य कार्ड से', auto_climate:'स्वचालित जलवायु डेटा',
+    nitrogen:'नाइट्रोजन (N)', n_hint:'मिग्रा/किग्रा · 0–140', eg_90:'जैसे 90',
+    phosphorus:'फास्फोरस (P)', p_hint:'मिग्रा/किग्रा · 5–145', eg_42:'जैसे 42',
+    potassium:'पोटेशियम (K)', k_hint:'मिग्रा/किग्रा · 5–205', eg_43:'जैसे 43',
+    soil_ph:'मिट्टी pH', ph_hint:'0–14 · सामान्य 5.5–8', eg_65:'जैसे 6.5',
+    temperature_c:'तापमान (°C)', humidity_pct:'आर्द्रता (%)',
+    auto_hint:'मौसम API से भरा जाएगा', fetch_hint:'ऊपर स्थान खोजें ↑',
+    annual_rain:'वार्षिक वर्षा (मिमी)', rain_hint:'अपने क्षेत्र का वार्षिक औसत दर्ज करें', eg_200:'जैसे 200',
+    predict_btn:'सर्वश्रेष्ठ फसल खोजें', yield_btn:'उपज संभावना जाँचें',
+    crop_to_grow:'आप जो फसल उगाना चाहते हैं', crop_name:'फसल का नाम',
+    crop_hint:'सूची में से चुनें या टाइप करें', crop_placeholder:'जैसे चावल, मक्का, केला…',
+    rec_crop:'अनुशंसित फसल', why_crop:'💡 यह फसल क्यों?',
+    yield_outlook_for:'उपज संभावना', yield_analysis:'📋 उपज विश्लेषण',
+    suitability:'आपकी परिस्थितियाँ कितनी उपयुक्त हैं', best_for_field:'अभी आपके खेत के लिए सबसे अच्छी फसल',
+    conf_strong:'आपकी परिस्थितियाँ बहुत उपयुक्त हैं।',
+    conf_borderline:'परिस्थितियाँ अधिकतर उपयुक्त हैं, कुछ कारक सीमारेखा पर हैं।',
+    conf_partial:'परिस्थितियाँ आंशिक रूप से मेल खाती हैं — सावधानी से प्रबंधन करें।',
+    conf_msg:'मॉडल ने 22 फसलों से तुलना की — यह',
+    conf_sure:'आश्वस्त है कि',
+    conf_best:'आपके खेत के लिए सबसे उपयुक्त है।',
+    analyzing:'विश्लेषण हो रहा है…', checking:'जाँच हो रही है…',
+    generating:'व्याख्या तैयार हो रही है',
+  },
+  Telugu: {
+    tagline:'AI-శక్తితో పంట సలహాదారు', tab_predict:'🌱 ఉత్తమ పంట అంచనా', tab_yield:'🔍 దిగుబడి విచారణ',
+    p_hero_h2:'మీ పొలానికి <em>సరైన పంట</em> కనుగొనండి',
+    p_hero_p:'మీ గ్రామం లేదా జిల్లా టైప్ చేయండి — వాతావరణ సమాచారం స్వయంచాలకంగా వస్తుంది. మీ నేల విలువలు నమోదు చేసి మీ భాషలో సిఫారసు పొందండి.',
+    y_hero_h2:'మీరు <em>ఎంచుకున్న పంట</em> దిగుబడి తనిఖీ చేయండి',
+    y_hero_p:'ఇప్పటికే ఒక పంట మనసులో ఉందా? నేల మరియు వాతావరణ డేటాతో నమోదు చేయండి — దిగుబడి ఎంత ఉంటుందో తెలుసుకోండి.',
+    step_location:'స్థానం', step_soil:'నేల విలువలు', step_result:'ఫలితం',
+    step_crop_soil:'పంట & నేల', step_yield_report:'దిగుబడి నివేదిక',
+    your_location:'మీ స్థానం', fetch_weather:'వాతావరణం తెండి',
+    location_placeholder:'మీ గ్రామం, పట్టణం లేదా జిల్లా టైప్ చేయండి…',
+    temperature:'ఉష్ణోగ్రత', humidity:'తేమ',
+    from_shc:'నేల ఆరోగ్య కార్డు నుండి', auto_climate:'స్వయంచాలక వాతావరణ డేటా',
+    nitrogen:'నత్రజని (N)', n_hint:'మిగ్రా/కిగ్రా · 0–140', eg_90:'ఉదా. 90',
+    phosphorus:'భాస్వరం (P)', p_hint:'మిగ్రా/కిగ్రా · 5–145', eg_42:'ఉదా. 42',
+    potassium:'పొటాషియం (K)', k_hint:'మిగ్రా/కిగ్రా · 5–205', eg_43:'ఉదా. 43',
+    soil_ph:'నేల pH', ph_hint:'0–14 · సాధారణ 5.5–8', eg_65:'ఉదా. 6.5',
+    temperature_c:'ఉష్ణోగ్రత (°C)', humidity_pct:'తేమ (%)',
+    auto_hint:'వాతావరణ API నుండి స్వయంచాలకంగా', fetch_hint:'పై స్థానం వెతకండి ↑',
+    annual_rain:'వార్షిక వర్షపాతం (మిమీ)', rain_hint:'మీ ప్రాంత వార్షిక సగటు నమోదు చేయండి', eg_200:'ఉదా. 200',
+    predict_btn:'ఉత్తమ పంట అంచనా వేయండి', yield_btn:'దిగుబడి అవకాశం తనిఖీ చేయండి',
+    crop_to_grow:'మీరు పెంచాలనుకుంటున్న పంట', crop_name:'పంట పేరు',
+    crop_hint:'జాబితా నుండి ఎంచుకోండి లేదా టైప్ చేయండి', crop_placeholder:'ఉదా. వరి, మొక్కజొన్న, అరటి…',
+    rec_crop:'సిఫారసు చేసిన పంట', why_crop:'💡 ఈ పంట ఎందుకు?',
+    yield_outlook_for:'దిగుబడి అంచనా', yield_analysis:'📋 దిగుబడి విశ్లేషణ',
+    suitability:'మీ పరిస్థితులు ఎంత అనుకూలంగా ఉన్నాయి', best_for_field:'ప్రస్తుతం మీ పొలానికి అత్యుత్తమ పంట',
+    conf_strong:'మీ పరిస్థితులు చాలా అనుకూలంగా ఉన్నాయి.',
+    conf_borderline:'పరిస్థితులు చాలావరకు అనుకూలంగా ఉన్నాయి, కొన్ని అంశాలు సరిహద్దులో ఉన్నాయి.',
+    conf_partial:'పరిస్థితులు పాక్షికంగా సరిపోతున్నాయి — జాగ్రత్తగా నిర్వహించండి.',
+    conf_msg:'మోడల్ 22 పంటలతో పోల్చింది — ఇది',
+    conf_sure:'నమ్మకంగా ఉంది,',
+    conf_best:'మీ పొలానికి అత్యుత్తమ పంట.',
+    analyzing:'విశ్లేషిస్తోంది…', checking:'తనిఖీ చేస్తోంది…',
+    generating:'వివరణ రూపొందిస్తోంది',
+  },
+  Tamil: {
+    tagline:'AI-இயங்கும் பயிர் ஆலோசகர்', tab_predict:'🌱 சிறந்த பயிர் கண்டறிக', tab_yield:'🔍 மகசூல் விசாரணை',
+    p_hero_h2:'உங்கள் வயலுக்கு <em>சரியான பயிர்</em> கண்டறியுங்கள்',
+    p_hero_p:'உங்கள் கிராமம் அல்லது மாவட்டம் தட்டச்சு செய்யுங்கள் — வானிலை தகவல் தானாக வரும். உங்கள் மண் மதிப்புகளை உள்ளிட்டு உங்கள் மொழியில் பரிந்துரை பெறுங்கள்.',
+    y_hero_h2:'உங்கள் <em>தேர்ந்தெடுத்த பயிரின்</em> மகசூல் சரிபாருங்கள்',
+    y_hero_p:'ஏற்கனவே ஒரு பயிர் மனதில் உள்ளதா? மண் மற்றும் காலநிலை தரவுடன் உள்ளிட்டு மகசூல் எப்படி இருக்கும் என்று அறியுங்கள்.',
+    step_location:'இடம்', step_soil:'மண் மதிப்புகள்', step_result:'முடிவு',
+    step_crop_soil:'பயிர் & மண்', step_yield_report:'மகசூல் அறிக்கை',
+    your_location:'உங்கள் இடம்', fetch_weather:'வானிலை பெறுக',
+    location_placeholder:'உங்கள் கிராமம், நகரம் அல்லது மாவட்டத்தை தட்டச்சு செய்யுங்கள்…',
+    temperature:'வெப்பநிலை', humidity:'ஈரப்பதம்',
+    from_shc:'மண் சுகாதார அட்டையில் இருந்து', auto_climate:'தானாக பெறப்பட்ட காலநிலை தரவு',
+    nitrogen:'நைட்ரஜன் (N)', n_hint:'மி.கி/கி.கி · 0–140', eg_90:'எ.கா. 90',
+    phosphorus:'பாஸ்பரஸ் (P)', p_hint:'மி.கி/கி.கி · 5–145', eg_42:'எ.கா. 42',
+    potassium:'பொட்டாசியம் (K)', k_hint:'மி.கி/கி.கி · 5–205', eg_43:'எ.கா. 43',
+    soil_ph:'மண் pH', ph_hint:'0–14 · வழக்கமான 5.5–8', eg_65:'எ.கா. 6.5',
+    temperature_c:'வெப்பநிலை (°C)', humidity_pct:'ஈரப்பதம் (%)',
+    auto_hint:'வானிலை API இலிருந்து தானாக நிரப்பப்படும்', fetch_hint:'மேலே இடம் தேடுங்கள் ↑',
+    annual_rain:'ஆண்டு மழையளவு (மிமீ)', rain_hint:'உங்கள் பகுதியின் ஆண்டு சராசரியை உள்ளிடுக', eg_200:'எ.கா. 200',
+    predict_btn:'சிறந்த பயிர் கண்டறிக', yield_btn:'மகசூல் வாய்ப்பு சரிபார்க்க',
+    crop_to_grow:'நீங்கள் வளர்க்க விரும்பும் பயிர்', crop_name:'பயிர் பெயர்',
+    crop_hint:'பட்டியலில் இருந்து தேர்வு செய்யுங்கள் அல்லது தட்டச்சு செய்யுங்கள்', crop_placeholder:'எ.கா. நெல், மக்காச்சோளம், வாழை…',
+    rec_crop:'பரிந்துரைக்கப்பட்ட பயிர்', why_crop:'💡 இந்த பயிர் ஏன்?',
+    yield_outlook_for:'மகசூல் வாய்ப்பு', yield_analysis:'📋 மகசூல் பகுப்பாய்வு',
+    suitability:'உங்கள் நிலைமைகள் எவ்வளவு ஏற்றவை', best_for_field:'தற்போது உங்கள் வயலுக்கு சிறந்த பயிர்',
+    conf_strong:'உங்கள் நிலைமைகள் மிகவும் ஏற்றவை.',
+    conf_borderline:'நிலைமைகள் பெரும்பாலும் ஏற்றவை, சில காரணிகள் எல்லையில் உள்ளன.',
+    conf_partial:'நிலைமைகள் பகுதியளவு பொருந்துகின்றன — கவனமாக நிர்வகிக்கவும்.',
+    conf_msg:'மாதிரி 22 பயிர்களுடன் ஒப்பிட்டது —',
+    conf_sure:'நம்பிக்கையுடன் உள்ளது,',
+    conf_best:'உங்கள் வயலுக்கு சிறந்த பயிர்.',
+    analyzing:'பகுப்பாய்வு செய்கிறது…', checking:'சரிபார்க்கிறது…',
+    generating:'விளக்கம் தயாரிக்கிறது',
+  },
+  Kannada: {
+    tagline:'AI-ಚಾಲಿತ ಬೆಳೆ ಸಲಹೆಗಾರ', tab_predict:'🌱 ಉತ್ತಮ ಬೆಳೆ ಹುಡುಕಿ', tab_yield:'🔍 ಇಳುವರಿ ವಿಚಾರಣೆ',
+    p_hero_h2:'ನಿಮ್ಮ ಹೊಲಕ್ಕೆ <em>ಸೂಕ್ತ ಬೆಳೆ</em> ಹುಡುಕಿ',
+    p_hero_p:'ನಿಮ್ಮ ಗ್ರಾಮ ಅಥವಾ ಜಿಲ್ಲೆ ಟೈಪ್ ಮಾಡಿ — ಹವಾಮಾನ ಮಾಹಿತಿ ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಬರುತ್ತದೆ. ನಿಮ್ಮ ಮಣ್ಣಿನ ಮೌಲ್ಯಗಳನ್ನು ನಮೂದಿಸಿ ನಿಮ್ಮ ಭಾಷೆಯಲ್ಲಿ ಶಿಫಾರಸು ಪಡೆಯಿರಿ.',
+    y_hero_h2:'ನಿಮ್ಮ <em>ಆಯ್ದ ಬೆಳೆಯ</em> ಇಳುವರಿ ಪರಿಶೀಲಿಸಿ',
+    y_hero_p:'ಈಗಾಗಲೇ ಒಂದು ಬೆಳೆ ಮನಸ್ಸಿನಲ್ಲಿದೆಯೇ? ಮಣ್ಣು ಮತ್ತು ಹವಾಮಾನ ಡೇಟಾದೊಂದಿಗೆ ನಮೂದಿಸಿ — ಇಳುವರಿ ಎಷ್ಟಿರಬಹುದು ತಿಳಿಯಿರಿ.',
+    step_location:'ಸ್ಥಳ', step_soil:'ಮಣ್ಣಿನ ಮೌಲ್ಯಗಳು', step_result:'ಫಲಿತಾಂಶ',
+    step_crop_soil:'ಬೆಳೆ & ಮಣ್ಣು', step_yield_report:'ಇಳುವರಿ ವರದಿ',
+    your_location:'ನಿಮ್ಮ ಸ್ಥಳ', fetch_weather:'ಹವಾಮಾನ ತರಿ',
+    location_placeholder:'ನಿಮ್ಮ ಗ್ರಾಮ, ಪಟ್ಟಣ ಅಥವಾ ಜಿಲ್ಲೆ ಟೈಪ್ ಮಾಡಿ…',
+    temperature:'ತಾಪಮಾನ', humidity:'ಆರ್ದ್ರತೆ',
+    from_shc:'ಮಣ್ಣು ಆರೋಗ್ಯ ಕಾರ್ಡ್‌ನಿಂದ', auto_climate:'ಸ್ವಯಂಚಾಲಿತ ಹವಾಮಾನ ಡೇಟಾ',
+    nitrogen:'ಸಾರಜನಕ (N)', n_hint:'ಮಿಗ್ರಾ/ಕಿಗ್ರಾ · 0–140', eg_90:'ಉದಾ. 90',
+    phosphorus:'ರಂಜಕ (P)', p_hint:'ಮಿಗ್ರಾ/ಕಿಗ್ರಾ · 5–145', eg_42:'ಉದಾ. 42',
+    potassium:'ಪೊಟ್ಯಾಸಿಯಂ (K)', k_hint:'ಮಿಗ್ರಾ/ಕಿಗ್ರಾ · 5–205', eg_43:'ಉದಾ. 43',
+    soil_ph:'ಮಣ್ಣಿನ pH', ph_hint:'0–14 · ಸಾಮಾನ್ಯ 5.5–8', eg_65:'ಉದಾ. 6.5',
+    temperature_c:'ತಾಪಮಾನ (°C)', humidity_pct:'ಆರ್ದ್ರತೆ (%)',
+    auto_hint:'ಹವಾಮಾನ API ನಿಂದ ಸ್ವಯಂಚಾಲಿತ', fetch_hint:'ಮೇಲೆ ಸ್ಥಳ ಹುಡುಕಿ ↑',
+    annual_rain:'ವಾರ್ಷಿಕ ಮಳೆ (ಮಿಮೀ)', rain_hint:'ನಿಮ್ಮ ಪ್ರದೇಶದ ವಾರ್ಷಿಕ ಸರಾಸರಿ ನಮೂದಿಸಿ', eg_200:'ಉದಾ. 200',
+    predict_btn:'ಉತ್ತಮ ಬೆಳೆ ಹುಡುಕಿ', yield_btn:'ಇಳುವರಿ ಸಾಧ್ಯತೆ ಪರಿಶೀಲಿಸಿ',
+    crop_to_grow:'ನೀವು ಬೆಳೆಯಲು ಬಯಸುವ ಬೆಳೆ', crop_name:'ಬೆಳೆ ಹೆಸರು',
+    crop_hint:'ಪಟ್ಟಿಯಿಂದ ಆಯ್ಕೆ ಮಾಡಿ ಅಥವಾ ಟೈಪ್ ಮಾಡಿ', crop_placeholder:'ಉದಾ. ಭತ್ತ, ಜೋಳ, ಬಾಳೆ…',
+    rec_crop:'ಶಿಫಾರಸು ಮಾಡಿದ ಬೆಳೆ', why_crop:'💡 ಈ ಬೆಳೆ ಏಕೆ?',
+    yield_outlook_for:'ಇಳುವರಿ ಸಾಧ್ಯತೆ', yield_analysis:'📋 ಇಳುವರಿ ವಿಶ್ಲೇಷಣೆ',
+    suitability:'ನಿಮ್ಮ ಪರಿಸ್ಥಿತಿಗಳು ಎಷ್ಟು ಸೂಕ್ತ', best_for_field:'ಈಗ ನಿಮ್ಮ ಹೊಲಕ್ಕೆ ಉತ್ತಮ ಬೆಳೆ',
+    conf_strong:'ನಿಮ್ಮ ಪರಿಸ್ಥಿತಿಗಳು ತುಂಬಾ ಸೂಕ್ತ.',
+    conf_borderline:'ಪರಿಸ್ಥಿತಿಗಳು ಹೆಚ್ಚಾಗಿ ಸೂಕ್ತ, ಕೆಲ ಅಂಶಗಳು ಗಡಿಯಲ್ಲಿವೆ.',
+    conf_partial:'ಪರಿಸ್ಥಿತಿಗಳು ಭಾಗಶಃ ಹೊಂದುತ್ತವೆ — ಜಾಗರೂಕತೆಯಿಂದ ನಿರ್ವಹಿಸಿ.',
+    conf_msg:'ಮಾದರಿ 22 ಬೆಳೆಗಳೊಂದಿಗೆ ಹೋಲಿಸಿತು —',
+    conf_sure:'ವಿಶ್ವಾಸದಿಂದ ಇದೆ,',
+    conf_best:'ನಿಮ್ಮ ಹೊಲಕ್ಕೆ ಉತ್ತಮ ಬೆಳೆ.',
+    analyzing:'ವಿಶ್ಲೇಷಿಸಲಾಗುತ್ತಿದೆ…', checking:'ಪರಿಶೀಲಿಸಲಾಗುತ್ತಿದೆ…',
+    generating:'ವಿವರಣೆ ತಯಾರಿಸಲಾಗುತ್ತಿದೆ',
+  },
+  Marathi: {
+    tagline:'AI-चालित पीक सल्लागार', tab_predict:'🌱 सर्वोत्तम पीक शोधा', tab_yield:'🔍 उत्पादन चौकशी',
+    p_hero_h2:'तुमच्या शेतासाठी <em>योग्य पीक</em> शोधा',
+    p_hero_p:'तुमचे गाव किंवा जिल्हा टाइप करा — हवामान माहिती आपोआप येईल. तुमची माती मूल्ये नोंदवा आणि तुमच्या भाषेत शिफारस मिळवा.',
+    y_hero_h2:'तुमच्या <em>निवडलेल्या पिकाचे</em> उत्पादन तपासा',
+    y_hero_p:'आधीच एखादे पीक मनात आहे का? माती आणि हवामान डेटासह नोंदवा — उत्पादन कसे असेल ते जाणून घ्या.',
+    step_location:'स्थान', step_soil:'माती मूल्ये', step_result:'निकाल',
+    step_crop_soil:'पीक & माती', step_yield_report:'उत्पादन अहवाल',
+    your_location:'तुमचे स्थान', fetch_weather:'हवामान आणा',
+    location_placeholder:'तुमचे गाव, शहर किंवा जिल्हा टाइप करा…',
+    temperature:'तापमान', humidity:'आर्द्रता',
+    from_shc:'माती आरोग्य कार्डमधून', auto_climate:'स्वयंचलित हवामान डेटा',
+    nitrogen:'नायट्रोजन (N)', n_hint:'मि.ग्रॅ/कि.ग्रॅ · 0–140', eg_90:'उदा. 90',
+    phosphorus:'फॉस्फरस (P)', p_hint:'मि.ग्रॅ/कि.ग्रॅ · 5–145', eg_42:'उदा. 42',
+    potassium:'पोटॅशियम (K)', k_hint:'मि.ग्रॅ/कि.ग्रॅ · 5–205', eg_43:'उदा. 43',
+    soil_ph:'मातीचा pH', ph_hint:'0–14 · सामान्य 5.5–8', eg_65:'उदा. 6.5',
+    temperature_c:'तापमान (°C)', humidity_pct:'आर्द्रता (%)',
+    auto_hint:'हवामान API मधून आपोआप भरले जाईल', fetch_hint:'वर स्थान शोधा ↑',
+    annual_rain:'वार्षिक पाऊस (मिमी)', rain_hint:'तुमच्या प्रदेशाचे वार्षिक सरासरी नोंदवा', eg_200:'उदा. 200',
+    predict_btn:'सर्वोत्तम पीक शोधा', yield_btn:'उत्पादन शक्यता तपासा',
+    crop_to_grow:'तुम्हाला पिकवायचे पीक', crop_name:'पिकाचे नाव',
+    crop_hint:'यादीतून निवडा किंवा टाइप करा', crop_placeholder:'उदा. तांदूळ, मका, केळे…',
+    rec_crop:'शिफारस केलेले पीक', why_crop:'💡 हे पीक का?',
+    yield_outlook_for:'उत्पादन शक्यता', yield_analysis:'📋 उत्पादन विश्लेषण',
+    suitability:'तुमच्या परिस्थिती किती योग्य आहेत', best_for_field:'आत्ता तुमच्या शेतासाठी सर्वोत्तम पीक',
+    conf_strong:'तुमच्या परिस्थिती खूप योग्य आहेत.',
+    conf_borderline:'परिस्थिती बहुतांश योग्य आहेत, काही घटक सीमारेषेवर आहेत.',
+    conf_partial:'परिस्थिती अंशतः जुळतात — काळजीपूर्वक व्यवस्थापन करा.',
+    conf_msg:'मॉडेलने 22 पिकांशी तुलना केली —',
+    conf_sure:'आत्मविश्वासाने सांगतो,',
+    conf_best:'तुमच्या शेतासाठी सर्वोत्तम पीक.',
+    analyzing:'विश्लेषण होत आहे…', checking:'तपासत आहे…',
+    generating:'स्पष्टीकरण तयार होत आहे',
+  },
+  Bengali: {
+    tagline:'AI-চালিত ফসল উপদেষ্টা', tab_predict:'🌱 সেরা ফসল খুঁজুন', tab_yield:'🔍 ফলন অনুসন্ধান',
+    p_hero_h2:'আপনার জমির জন্য <em>সঠিক ফসল</em> খুঁজুন',
+    p_hero_p:'আপনার গ্রাম বা জেলা টাইপ করুন — আবহাওয়া তথ্য স্বয়ংক্রিয়ভাবে আসবে। আপনার মাটির মান লিখুন এবং আপনার ভাষায় পরামর্শ পান।',
+    y_hero_h2:'আপনার <em>বেছে নেওয়া ফসলের</em> ফলন দেখুন',
+    y_hero_p:'ইতিমধ্যে একটি ফসলের কথা মাথায় আছে? মাটি ও আবহাওয়া ডেটা দিয়ে লিখুন — ফলন কেমন হবে জানুন।',
+    step_location:'অবস্থান', step_soil:'মাটির মান', step_result:'ফলাফল',
+    step_crop_soil:'ফসল ও মাটি', step_yield_report:'ফলন প্রতিবেদন',
+    your_location:'আপনার অবস্থান', fetch_weather:'আবহাওয়া আনুন',
+    location_placeholder:'আপনার গ্রাম, শহর বা জেলা টাইপ করুন…',
+    temperature:'তাপমাত্রা', humidity:'আর্দ্রতা',
+    from_shc:'মৃত্তিকা স্বাস্থ্য কার্ড থেকে', auto_climate:'স্বয়ংক্রিয় আবহাওয়া তথ্য',
+    nitrogen:'নাইট্রোজেন (N)', n_hint:'মিগ্রা/কিগ্রা · 0–140', eg_90:'যেমন 90',
+    phosphorus:'ফসফরাস (P)', p_hint:'মিগ্রা/কিগ্রা · 5–145', eg_42:'যেমন 42',
+    potassium:'পটাসিয়াম (K)', k_hint:'মিগ্রা/কিগ্রা · 5–205', eg_43:'যেমন 43',
+    soil_ph:'মাটির pH', ph_hint:'0–14 · সাধারণ 5.5–8', eg_65:'যেমন 6.5',
+    temperature_c:'তাপমাত্রা (°C)', humidity_pct:'আর্দ্রতা (%)',
+    auto_hint:'আবহাওয়া API থেকে স্বয়ংক্রিয়ভাবে', fetch_hint:'উপরে অবস্থান খুঁজুন ↑',
+    annual_rain:'বার্ষিক বৃষ্টিপাত (মিমি)', rain_hint:'আপনার অঞ্চলের বার্ষিক গড় লিখুন', eg_200:'যেমন 200',
+    predict_btn:'সেরা ফসল খুঁজুন', yield_btn:'ফলন সম্ভাবনা দেখুন',
+    crop_to_grow:'আপনি যে ফসল চাষ করতে চান', crop_name:'ফসলের নাম',
+    crop_hint:'তালিকা থেকে বেছে নিন বা টাইপ করুন', crop_placeholder:'যেমন ধান, ভুট্টা, কলা…',
+    rec_crop:'সুপারিশকৃত ফসল', why_crop:'💡 এই ফসল কেন?',
+    yield_outlook_for:'ফলন সম্ভাবনা', yield_analysis:'📋 ফলন বিশ্লেষণ',
+    suitability:'আপনার পরিস্থিতি কতটা উপযুক্ত', best_for_field:'এখন আপনার জমির জন্য সেরা ফসল',
+    conf_strong:'আপনার পরিস্থিতি খুবই উপযুক্ত।',
+    conf_borderline:'পরিস্থিতি বেশিরভাগ উপযুক্ত, কিছু বিষয় সীমারেখায় আছে।',
+    conf_partial:'পরিস্থিতি আংশিকভাবে মেলে — সতর্কতার সাথে পরিচালনা করুন।',
+    conf_msg:'মডেল ২২টি ফসলের সাথে তুলনা করেছে —',
+    conf_sure:'আত্মবিশ্বাসী,',
+    conf_best:'আপনার জমির জন্য সেরা ফসল।',
+    analyzing:'বিশ্লেষণ হচ্ছে…', checking:'পরীক্ষা করা হচ্ছে…',
+    generating:'ব্যাখ্যা তৈরি হচ্ছে',
+  },
+  Punjabi: {
+    tagline:'AI-ਚਾਲਿਤ ਫ਼ਸਲ ਸਲਾਹਕਾਰ', tab_predict:'🌱 ਸਭ ਤੋਂ ਵਧੀਆ ਫ਼ਸਲ ਲੱਭੋ', tab_yield:'🔍 ਝਾੜ ਦੀ ਪੁੱਛ-ਗਿੱਛ',
+    p_hero_h2:'ਆਪਣੇ ਖੇਤ ਲਈ <em>ਸਹੀ ਫ਼ਸਲ</em> ਲੱਭੋ',
+    p_hero_p:'ਆਪਣਾ ਪਿੰਡ ਜਾਂ ਜ਼ਿਲ੍ਹਾ ਟਾਈਪ ਕਰੋ — ਮੌਸਮ ਦੀ ਜਾਣਕਾਰੀ ਆਪਣੇ ਆਪ ਆਵੇਗੀ। ਆਪਣੀ ਮਿੱਟੀ ਦੇ ਮੁੱਲ ਦਰਜ ਕਰੋ ਅਤੇ ਆਪਣੀ ਭਾਸ਼ਾ ਵਿੱਚ ਸਿਫ਼ਾਰਸ਼ ਪ੍ਰਾਪਤ ਕਰੋ।',
+    y_hero_h2:'ਆਪਣੀ <em>ਚੁਣੀ ਹੋਈ ਫ਼ਸਲ</em> ਦਾ ਝਾੜ ਦੇਖੋ',
+    y_hero_p:'ਕੀ ਮਨ ਵਿੱਚ ਪਹਿਲਾਂ ਤੋਂ ਕੋਈ ਫ਼ਸਲ ਹੈ? ਮਿੱਟੀ ਅਤੇ ਮੌਸਮ ਡੇਟਾ ਦੇ ਨਾਲ ਦਰਜ ਕਰੋ — ਝਾੜ ਕਿੰਨਾ ਹੋਵੇਗਾ ਜਾਣੋ।',
+    step_location:'ਸਥਾਨ', step_soil:'ਮਿੱਟੀ ਦੇ ਮੁੱਲ', step_result:'ਨਤੀਜਾ',
+    step_crop_soil:'ਫ਼ਸਲ & ਮਿੱਟੀ', step_yield_report:'ਝਾੜ ਰਿਪੋਰਟ',
+    your_location:'ਤੁਹਾਡਾ ਸਥਾਨ', fetch_weather:'ਮੌਸਮ ਲਿਆਓ',
+    location_placeholder:'ਆਪਣਾ ਪਿੰਡ, ਸ਼ਹਿਰ ਜਾਂ ਜ਼ਿਲ੍ਹਾ ਟਾਈਪ ਕਰੋ…',
+    temperature:'ਤਾਪਮਾਨ', humidity:'ਨਮੀ',
+    from_shc:'ਮਿੱਟੀ ਸਿਹਤ ਕਾਰਡ ਤੋਂ', auto_climate:'ਆਪਣੇ ਆਪ ਲਿਆ ਮੌਸਮ ਡੇਟਾ',
+    nitrogen:'ਨਾਈਟ੍ਰੋਜਨ (N)', n_hint:'ਮਿਗ੍ਰਾ/ਕਿਗ੍ਰਾ · 0–140', eg_90:'ਜਿਵੇਂ 90',
+    phosphorus:'ਫਾਸਫੋਰਸ (P)', p_hint:'ਮਿਗ੍ਰਾ/ਕਿਗ੍ਰਾ · 5–145', eg_42:'ਜਿਵੇਂ 42',
+    potassium:'ਪੋਟਾਸ਼ੀਅਮ (K)', k_hint:'ਮਿਗ੍ਰਾ/ਕਿਗ੍ਰਾ · 5–205', eg_43:'ਜਿਵੇਂ 43',
+    soil_ph:'ਮਿੱਟੀ pH', ph_hint:'0–14 · ਸਾਧਾਰਨ 5.5–8', eg_65:'ਜਿਵੇਂ 6.5',
+    temperature_c:'ਤਾਪਮਾਨ (°C)', humidity_pct:'ਨਮੀ (%)',
+    auto_hint:'ਮੌਸਮ API ਤੋਂ ਆਪਣੇ ਆਪ ਭਰੇਗਾ', fetch_hint:'ਉੱਪਰ ਸਥਾਨ ਖੋਜੋ ↑',
+    annual_rain:'ਸਾਲਾਨਾ ਬਾਰਿਸ਼ (ਮਿਮੀ)', rain_hint:'ਆਪਣੇ ਖੇਤਰ ਦੀ ਸਾਲਾਨਾ ਔਸਤ ਦਰਜ ਕਰੋ', eg_200:'ਜਿਵੇਂ 200',
+    predict_btn:'ਸਭ ਤੋਂ ਵਧੀਆ ਫ਼ਸਲ ਲੱਭੋ', yield_btn:'ਝਾੜ ਦੀ ਸੰਭਾਵਨਾ ਦੇਖੋ',
+    crop_to_grow:'ਤੁਸੀਂ ਜੋ ਫ਼ਸਲ ਉਗਾਉਣਾ ਚਾਹੁੰਦੇ ਹੋ', crop_name:'ਫ਼ਸਲ ਦਾ ਨਾਮ',
+    crop_hint:'ਸੂਚੀ ਵਿੱਚੋਂ ਚੁਣੋ ਜਾਂ ਟਾਈਪ ਕਰੋ', crop_placeholder:'ਜਿਵੇਂ ਝੋਨਾ, ਮੱਕੀ, ਕੇਲਾ…',
+    rec_crop:'ਸਿਫ਼ਾਰਸ਼ ਕੀਤੀ ਫ਼ਸਲ', why_crop:'💡 ਇਹ ਫ਼ਸਲ ਕਿਉਂ?',
+    yield_outlook_for:'ਝਾੜ ਦੀ ਸੰਭਾਵਨਾ', yield_analysis:'📋 ਝਾੜ ਵਿਸ਼ਲੇਸ਼ਣ',
+    suitability:'ਤੁਹਾਡੀਆਂ ਹਾਲਤਾਂ ਕਿੰਨੀਆਂ ਢੁਕਵੀਆਂ', best_for_field:'ਹੁਣ ਤੁਹਾਡੇ ਖੇਤ ਲਈ ਸਭ ਤੋਂ ਵਧੀਆ ਫ਼ਸਲ',
+    conf_strong:'ਤੁਹਾਡੀਆਂ ਹਾਲਤਾਂ ਬਹੁਤ ਢੁਕਵੀਆਂ ਹਨ।',
+    conf_borderline:'ਹਾਲਤਾਂ ਜ਼ਿਆਦਾਤਰ ਢੁਕਵੀਆਂ ਹਨ, ਕੁਝ ਕਾਰਕ ਸੀਮਾ \'ਤੇ ਹਨ।',
+    conf_partial:'ਹਾਲਤਾਂ ਅੰਸ਼ਕ ਤੌਰ \'ਤੇ ਮੇਲ ਖਾਂਦੀਆਂ ਹਨ — ਧਿਆਨ ਨਾਲ ਪ੍ਰਬੰਧਨ ਕਰੋ।',
+    conf_msg:'ਮਾਡਲ ਨੇ 22 ਫ਼ਸਲਾਂ ਨਾਲ ਤੁਲਨਾ ਕੀਤੀ —',
+    conf_sure:'ਭਰੋਸੇ ਨਾਲ ਕਹਿੰਦਾ ਹੈ,',
+    conf_best:'ਤੁਹਾਡੇ ਖੇਤ ਲਈ ਸਭ ਤੋਂ ਵਧੀਆ ਫ਼ਸਲ।',
+    analyzing:'ਵਿਸ਼ਲੇਸ਼ਣ ਹੋ ਰਿਹਾ ਹੈ…', checking:'ਜਾਂਚ ਹੋ ਰਹੀ ਹੈ…',
+    generating:'ਵਿਆਖਿਆ ਤਿਆਰ ਹੋ ਰਹੀ ਹੈ',
+  },
+  Gujarati: {
+    tagline:'AI-સંચાલિત પાક સલાહકાર', tab_predict:'🌱 શ્રેષ્ઠ પાક શોધો', tab_yield:'🔍 ઉત્પાદન વિચારણા',
+    p_hero_h2:'તમારા ખેતર માટે <em>સાચો પાક</em> શોધો',
+    p_hero_p:'તમારું ગામ અથવા જિલ્લો ટાઇપ કરો — હવામાન માહિતી આપોઆપ આવશે. માટીના મૂલ્યો નોંધો અને તમારી ભાષામાં ભલામણ મેળવો.',
+    y_hero_h2:'તમારા <em>પસંદ કરેલ પાકનું</em> ઉત્પાદન ચકાસો',
+    y_hero_p:'પહેલેથી કોઈ પાક મનમાં છે? માટી અને હવામાન ડેટા સાથે નોંધો — ઉત્પાદન કેવું રહેશે તે જાણો.',
+    step_location:'સ્થળ', step_soil:'માટીના મૂલ્યો', step_result:'પરિણામ',
+    step_crop_soil:'પાક & માટી', step_yield_report:'ઉત્પાદન અહેવાલ',
+    your_location:'તમારું સ્થળ', fetch_weather:'હવામાન લાવો',
+    location_placeholder:'તમારું ગામ, શહેર અથવા જિલ્લો ટાઇપ કરો…',
+    temperature:'તાપમાન', humidity:'ભેજ',
+    from_shc:'માટી આરોગ્ય કાર્ડ માંથી', auto_climate:'સ્વચાલિત હવામાન ડેટા',
+    nitrogen:'નાઇટ્રોજન (N)', n_hint:'મિ.ગ્રા/કિ.ગ્રા · 0–140', eg_90:'દા.ત. 90',
+    phosphorus:'ફોસ્ફોરસ (P)', p_hint:'મિ.ગ્રા/કિ.ગ્રા · 5–145', eg_42:'દા.ત. 42',
+    potassium:'પોટેશિયમ (K)', k_hint:'મિ.ગ્રા/કિ.ગ્રા · 5–205', eg_43:'દા.ત. 43',
+    soil_ph:'માટીનો pH', ph_hint:'0–14 · સામાન્ય 5.5–8', eg_65:'દા.ત. 6.5',
+    temperature_c:'તાપમાન (°C)', humidity_pct:'ભેજ (%)',
+    auto_hint:'હવામાન API થી આપોઆપ ભરાશે', fetch_hint:'ઉપર સ્થળ શોધો ↑',
+    annual_rain:'વાર્ષિક વરસાદ (મિમી)', rain_hint:'તમારા વિસ્તારની વાર્ષિક સરેરાશ નોંધો', eg_200:'દા.ત. 200',
+    predict_btn:'શ્રેષ્ઠ પાક શોધો', yield_btn:'ઉત્પાદન શક્યતા ચકાસો',
+    crop_to_grow:'તમે ઉગાડવા માંગો છો તે પાક', crop_name:'પાકનું નામ',
+    crop_hint:'યાદીમાંથી પસંદ કરો અથવા ટાઇપ કરો', crop_placeholder:'દા.ત. ડાંગર, મકાઈ, કેળા…',
+    rec_crop:'ભલામણ કરેલ પાક', why_crop:'💡 આ પાક કેમ?',
+    yield_outlook_for:'ઉત્પાદન શક્યતા', yield_analysis:'📋 ઉત્પાદન વિશ્લેષણ',
+    suitability:'તમારી પરિસ્થિતિ કેટલી અનુકૂળ', best_for_field:'હાલ તમારા ખેતર માટે શ્રેષ્ઠ પાક',
+    conf_strong:'તમારી પરિસ્થિતિ ખૂબ અનુકૂળ છે.',
+    conf_borderline:'પરિસ્થિતિ મોટાભાગે અનુકૂળ, કેટલાક પરિબળો સીમારેખા પર.',
+    conf_partial:'પરિસ્થિતિ આંશિક રીતે મળે — સાવધાનીથી સંભાળો.',
+    conf_msg:'મોડેલે 22 પાક સાથે સરખામણી કરી —',
+    conf_sure:'વિશ્વાસ સાથે કહે છે,',
+    conf_best:'તમારા ખેતર માટે શ્રેષ્ઠ પાક.',
+    analyzing:'વિશ્લેષણ ચાલુ છે…', checking:'ચકાસણી ચાલુ છે…',
+    generating:'સ્પષ્ટીકરણ તૈયાર થઈ રહ્યું છે',
+  },
+  Odia: {
+    tagline:'AI-ଚାଳିତ ଫସଲ ପରାମର୍ଶଦାତା', tab_predict:'🌱 ସର୍ବୋତ୍ତମ ଫସଲ ଖୋଜନ୍ତୁ', tab_yield:'🔍 ଅମଳ ଅନୁସନ୍ଧାନ',
+    p_hero_h2:'ଆପଣଙ୍କ ଜମି ପାଇଁ <em>ସଠିକ ଫସଲ</em> ଖୋଜନ୍ତୁ',
+    p_hero_p:'ଆପଣଙ୍କ ଗ୍ରାମ ବା ଜିଲ୍ଲା ଟାଇପ କରନ୍ତୁ — ପାଣିପାଗ ତଥ୍ୟ ସ୍ୱୟଂଚାଳିତ ଭାବରେ ଆସିବ। ମାଟି ମୂଲ୍ୟ ଦର୍ଜ କରନ୍ତୁ ଏବଂ ଆପଣଙ୍କ ଭାଷାରେ ପରାମର୍ଶ ପାଆନ୍ତୁ।',
+    y_hero_h2:'ଆପଣଙ୍କ <em>ବାଛିଥିବା ଫସଲ</em> ଅମଳ ଯାଞ୍ଚ କରନ୍ତୁ',
+    y_hero_p:'ପୂର୍ବରୁ ଏକ ଫସଲ ମନରେ ଅଛି? ମାଟି ଓ ପାଣିପାଗ ଡେଟା ସହ ଦର୍ଜ କରନ୍ତୁ — ଅମଳ କେତେ ହେବ ଜାଣନ୍ତୁ।',
+    step_location:'ସ୍ଥାନ', step_soil:'ମାଟି ମୂଲ୍ୟ', step_result:'ଫଳାଫଳ',
+    step_crop_soil:'ଫସଲ ଓ ମାଟି', step_yield_report:'ଅମଳ ରିପୋର୍ଟ',
+    your_location:'ଆପଣଙ୍କ ସ୍ଥାନ', fetch_weather:'ପାଣିପାଗ ଆଣନ୍ତୁ',
+    location_placeholder:'ଆପଣଙ୍କ ଗ୍ରାମ, ସହର ବା ଜିଲ୍ଲା ଟାଇପ କରନ୍ତୁ…',
+    temperature:'ତାପମାତ୍ରା', humidity:'ଆର୍ଦ୍ରତା',
+    from_shc:'ମୃତ୍ତିକା ସ୍ୱାସ୍ଥ୍ୟ କାର୍ଡ ରୁ', auto_climate:'ସ୍ୱୟଂଚାଳିତ ପାଣିପାଗ ଡେଟା',
+    nitrogen:'ନାଇଟ୍ରୋଜେନ (N)', n_hint:'ମି.ଗ୍ରା/କି.ଗ୍ରା · 0–140', eg_90:'ଯେ ପରି 90',
+    phosphorus:'ଫସଫରସ (P)', p_hint:'ମି.ଗ୍ରା/କି.ଗ୍ରା · 5–145', eg_42:'ଯେ ପରି 42',
+    potassium:'ପୋଟାସିୟମ (K)', k_hint:'ମି.ଗ୍ରା/କି.ଗ୍ରା · 5–205', eg_43:'ଯେ ପରି 43',
+    soil_ph:'ମାଟି pH', ph_hint:'0–14 · ସାଧାରଣ 5.5–8', eg_65:'ଯେ ପରି 6.5',
+    temperature_c:'ତାପମାତ୍ରା (°C)', humidity_pct:'ଆର୍ଦ୍ରତା (%)',
+    auto_hint:'ପାଣିପାଗ API ରୁ ସ୍ୱୟଂଚାଳିତ', fetch_hint:'ଉପରେ ସ୍ଥାନ ଖୋଜନ୍ତୁ ↑',
+    annual_rain:'ବାର୍ଷିକ ବର୍ଷାପାତ (ମିମି)', rain_hint:'ଆପଣଙ୍କ ଅଞ୍ଚଳର ବାର୍ଷିକ ହାରାହାରି ଦର୍ଜ କରନ୍ତୁ', eg_200:'ଯେ ପରି 200',
+    predict_btn:'ସର୍ବୋତ୍ତମ ଫସଲ ଖୋଜନ୍ତୁ', yield_btn:'ଅମଳ ସଂଭାବନା ଦେଖନ୍ତୁ',
+    crop_to_grow:'ଆପଣ ଯେଉଁ ଫସଲ ଚାଷ କରିବାକୁ ଚାହୁଁଛନ୍ତି', crop_name:'ଫସଲ ନାମ',
+    crop_hint:'ତାଲିକାରୁ ବାଛନ୍ତୁ ବା ଟାଇପ କରନ୍ତୁ', crop_placeholder:'ଯେ ପରି ଧାନ, ମକା, କଦଳୀ…',
+    rec_crop:'ସୁପାରିଶ କରାଯାଇଥିବା ଫସଲ', why_crop:'💡 ଏହି ଫସଲ କାହିଁକି?',
+    yield_outlook_for:'ଅମଳ ସଂଭାବନା', yield_analysis:'📋 ଅମଳ ବିଶ୍ଳେଷଣ',
+    suitability:'ଆପଣଙ୍କ ପରିସ୍ଥିତି କେତେ ଅନୁକୂଳ', best_for_field:'ଏବେ ଆପଣଙ୍କ ଜମି ପାଇଁ ସର୍ବୋତ୍ତମ ଫସଲ',
+    conf_strong:'ଆପଣଙ୍କ ପରିସ୍ଥିତି ଅତ୍ୟନ୍ତ ଅନୁକୂଳ।',
+    conf_borderline:'ପରିସ୍ଥିତି ଅଧିକାଂଶ ଅନୁକୂଳ, କିଛି କାରଣ ସୀମାରେ।',
+    conf_partial:'ପରିସ୍ଥିତି ଆଂଶିକ ମିଳୁଛି — ଯତ୍ନ ସହ ପରିଚାଳନା କରନ୍ତୁ।',
+    conf_msg:'ମଡେଲ 22ଟି ଫସଲ ସହ ତୁଳନା କଲା —',
+    conf_sure:'ଆତ୍ମବିଶ୍ୱାସୀ,',
+    conf_best:'ଆପଣଙ୍କ ଜମି ପାଇଁ ସର୍ବୋତ୍ତମ ଫସଲ।',
+    analyzing:'ବିଶ୍ଳେଷଣ ହୋଇଛି…', checking:'ଯାଞ୍ଚ ହୋଇଛି…',
+    generating:'ବ୍ୟାଖ୍ୟା ପ୍ରସ୍ତୁତ ହୋଇଛି',
+  },
+};
+
+/* helper: get string for current lang, fallback to English */
+function s(key) {
+  const lang = UI[selectedLang] || UI.English;
+  return lang[key] !== undefined ? lang[key] : (UI.English[key] || key);
+}
+
+/* Apply translations to all data-i18n elements */
+function applyTranslations() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    el.innerHTML = s(key);
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const key = el.getAttribute('data-i18n-placeholder');
+    el.placeholder = s(key);
+  });
+}
+
+/* ── State ── */
+const cropEmoji = {
+  apple:'🍎',banana:'🍌',blackgram:'🫘',chickpea:'🫘',coconut:'🥥',
+  coffee:'☕',cotton:'🌿',grapes:'🍇',jute:'🌾',kidneybeans:'🫘',
+  lentil:'🫘',maize:'🌽',mango:'🥭',mothbeans:'🫘',mungbean:'🫘',
+  muskmelon:'🍈',orange:'🍊',papaya:'🍑',pigeonpeas:'🫘',
+  pomegranate:'🍎',rice:'🍚',watermelon:'🍉'
+};
+
+let selectedLang = 'English';
+const loc = { p: null, y: null };
+const acResults = { p: [], y: [] };
+let debounceTimers = { p: null, y: null };
+let selIdx = { p: -1, y: -1 };
+
+function setLang(select) {
+  selectedLang = select.value;
+  applyTranslations();
+}
+
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+function onLocationInput(pfx) {
+  const q = document.getElementById(`${pfx}-locationInput`).value.trim();
+  loc[pfx] = null;
+  clearTimeout(debounceTimers[pfx]);
+  if (q.length < 2) { hideAC(pfx); return; }
+  debounceTimers[pfx] = setTimeout(() => searchLoc(q, pfx), 380);
+}
+
+async function searchLoc(q, pfx) {
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&addressdetails=1`,{ headers:{'Accept-Language':'en'} });
+    acResults[pfx] = await res.json();
+    showAC(pfx);
+  } catch { hideAC(pfx); }
+}
+
+function showAC(pfx) {
+  const list = document.getElementById(`${pfx}-autocompleteList`);
+  const results = acResults[pfx];
+  if (!results.length) { hideAC(pfx); return; }
+  list.innerHTML = results.map((r,i)=>{
+    const city = r.address.city||r.address.town||r.address.village||r.address.county||r.name;
+    const region = [r.address.state,r.address.country].filter(Boolean).join(', ');
+    return `<div class="autocomplete-item" onclick="selectLoc(${i},'${pfx}')"><div class="city">${city}</div><div class="region">${region}</div></div>`;
+  }).join('');
+  list.style.display='block'; selIdx[pfx]=-1;
+}
+
+function hideAC(pfx){ document.getElementById(`${pfx}-autocompleteList`).style.display='none'; selIdx[pfx]=-1; }
+
+function onLocationKey(e,pfx){
+  const items=document.querySelectorAll(`#${pfx}-autocompleteList .autocomplete-item`);
+  if(!items.length) return;
+  if(e.key==='ArrowDown') selIdx[pfx]=Math.min(selIdx[pfx]+1,items.length-1);
+  else if(e.key==='ArrowUp') selIdx[pfx]=Math.max(selIdx[pfx]-1,0);
+  else if(e.key==='Enter'&&selIdx[pfx]>=0){ selectLoc(selIdx[pfx],pfx); return; }
+  else return;
+  items.forEach((el,i)=>el.classList.toggle('selected',i===selIdx[pfx]));
+  e.preventDefault();
+}
+
+function selectLoc(i,pfx){
+  const r=acResults[pfx][i];
+  const city=r.address.city||r.address.town||r.address.village||r.address.county||r.name;
+  const region=[r.address.state,r.address.country].filter(Boolean).join(', ');
+  loc[pfx]={name:`${city}, ${region}`,lat:parseFloat(r.lat),lon:parseFloat(r.lon)};
+  document.getElementById(`${pfx}-locationInput`).value=loc[pfx].name;
+  hideAC(pfx);
+}
+
+document.addEventListener('click',e=>{if(!e.target.closest('.location-input-wrap')){hideAC('p');hideAC('y');}});
+
+async function fetchWeather(pfx){
+  if(!loc[pfx]){
+    const q=document.getElementById(`${pfx}-locationInput`).value.trim();
+    if(!q){showStatus(pfx,s('location_placeholder'),'error');return;}
+    showStatus(pfx,'Searching…','info');
+    try{
+      const res=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&addressdetails=1`,{headers:{'Accept-Language':'en'}});
+      const data=await res.json();
+      if(!data.length){showStatus(pfx,'Location not found. Try a nearby town or district.','error');return;}
+      const r=data[0];
+      const city=r.address.city||r.address.town||r.address.village||r.address.county||r.name;
+      const region=[r.address.state,r.address.country].filter(Boolean).join(', ');
+      loc[pfx]={name:`${city}, ${region}`,lat:parseFloat(r.lat),lon:parseFloat(r.lon)};
+      document.getElementById(`${pfx}-locationInput`).value=loc[pfx].name;
+    }catch{showStatus(pfx,'Could not search location.','error');return;}
+  }
+  const btn=document.getElementById(`${pfx}-fetchBtn`);
+  btn.disabled=true; btn.innerHTML=`<span>⏳</span> …`;
+  showStatus(pfx,`Fetching weather for ${loc[pfx].name}…`,'info');
+  try{
+    const{lat,lon}=loc[pfx];
+    const res=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m&timezone=auto`);
+    const data=await res.json();
+    const cur=data.current;
+    setAF(`${pfx}-temperature`,cur.temperature_2m);
+    setAF(`${pfx}-humidity`,cur.relative_humidity_2m);
+    setPill(`${pfx}-pill-temp`,`${pfx}-pill-temp-val`,`${cur.temperature_2m} °C`);
+    setPill(`${pfx}-pill-hum`,`${pfx}-pill-hum-val`,`${cur.relative_humidity_2m} %`);
+    showStatus(pfx,`✅ ${loc[pfx].name}`,'success');
+    setStep(pfx,2);
+  }catch{showStatus(pfx,'Could not fetch weather. Check internet.','error');}
+  finally{btn.disabled=false;btn.innerHTML=`<span>☁️</span> <span data-i18n="fetch_weather">${s('fetch_weather')}</span>`;}
+}
+
+function setAF(id,val){const el=document.getElementById(id);el.value=val;el.classList.add('auto-filled');}
+function setPill(pId,vId,text){document.getElementById(vId).textContent=text;document.getElementById(pId).classList.add('fetched');}
+function showStatus(pfx,msg,type){const el=document.getElementById(`${pfx}-locationStatus`);el.textContent=msg;el.className=`status-msg ${type}`;}
+function setStep(pfx,n){for(let i=1;i<=3;i++){const el=document.getElementById(`${pfx}-step${i}`);el.className='step'+(i<n?' done':i===n?' active':'');}}
+
+function getField(pfx,f){return document.getElementById(`${pfx}-${f}`).value.trim();}
+function buildPayload(pfx){
+  const data={language:selectedLang};
+  for(const f of ['N','P','K','ph']){
+    const v=getField(pfx,f);
+    if(!v){alert(`Please enter ${f==='ph'?s('soil_ph'):f}.`);return null;}
+    data[f]=v;
+  }
+  for(const f of ['temperature','humidity']){
+    const v=getField(pfx,f);
+    if(!v){alert(s('fetch_weather')+' first.');return null;}
+    data[f]=v;
+  }
+  const rain=getField(pfx,'rainfall');
+  if(!rain){alert('Please enter Annual Rainfall (mm).\n\nTip: Hyderabad ~800mm, Mumbai ~2400mm, Delhi ~790mm, Chennai ~1400mm.');return null;}
+  data['rainfall']=rain;
+  return data;
+}
+
+async function runPredict(){
+  const data=buildPayload('p');
+  if(!data) return;
+  const btn=document.getElementById('p-predictBtn');
+  btn.classList.add('loading'); btn.innerHTML=`<span>⏳</span> ${s('analyzing')}`;
+  setStep('p',3);
+  const resultEl=document.getElementById('predict-result');
+  resultEl.style.display='block';
+  resultEl.innerHTML=`
+    <div class="result-card">
+      <div class="result-top">
+        <div class="crop-icon">🌱</div>
+        <div class="result-text">
+          <div class="rlabel">${s('rec_crop')}</div>
+          <div class="crop-name" style="opacity:.45">${s('analyzing')}</div>
+        </div>
+      </div>
+      <div class="explanation-box">
+        <div class="exp-label">${s('why_crop')}</div>
+        <div class="exp-loading"><div class="spinner"></div> ${s('generating')} ${selectedLang}…</div>
+      </div>
+    </div>`;
+  try{
+    const res=await fetch('/predict',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    const rawText=await res.text();
+    let json;
+    try{json=JSON.parse(rawText);}catch{
+      resultEl.innerHTML=`<div class="error-card">⚠️ Unexpected server response.<br><pre style="font-size:.8rem;margin-top:.5rem;white-space:pre-wrap">${rawText.slice(0,400)}</pre></div>`;
+      return;
+    }
+    if(json.error){resultEl.innerHTML=`<div class="error-card">⚠️ ${json.error}</div>`;return;}
+    const expText=(json.explanation&&json.explanation.trim().length>0)?json.explanation.trim():'Explanation not available.';
+    const emoji=cropEmoji[json.crop]||'🌿';
+    const locLine=loc.p?`<div class="location-used">📍 ${loc.p.name}</div>`:'';
+    const confMsg=json.confidence>=80?s('conf_strong'):json.confidence>=50?s('conf_borderline'):s('conf_partial');
+    resultEl.innerHTML=`
+      <div class="result-card">
+        <div class="result-top">
+          <div class="crop-icon">${emoji}</div>
+          <div class="result-text">
+            <div class="rlabel">${s('rec_crop')}</div>
+            <div class="crop-name">${json.crop}</div>
+            ${locLine}
+            <div class="confidence-bar-wrap">
+              <div class="confidence-bar-bg"><div class="confidence-bar-fill" id="confBar" style="width:0%"></div></div>
+              <span class="confidence-pct">${json.confidence}%</span>
+            </div>
+            <div class="conf-explain">${s('conf_msg')} <strong>${json.confidence}%</strong> ${s('conf_sure')} <em>${json.crop}</em> ${s('conf_best')} ${confMsg}</div>
+          </div>
+        </div>
+        <div class="explanation-box">
+          <div class="exp-label">${s('why_crop')} · ${json.language}</div>
+          <div class="exp-text">${expText}</div>
+        </div>
+      </div>`;
+    requestAnimationFrame(()=>setTimeout(()=>{const b=document.getElementById('confBar');if(b)b.style.width=json.confidence+'%';},60));
+  }catch(err){
+    resultEl.innerHTML=`<div class="error-card">⚠️ Could not connect to server. Is Flask running?<br><small>${err.message}</small></div>`;
+  }finally{btn.classList.remove('loading');btn.innerHTML=`<span>🌱</span> <span data-i18n="predict_btn">${s('predict_btn')}</span>`;}
+}
+
+async function runYieldQuery(){
+  const crop=document.getElementById('y-crop').value.trim().toLowerCase();
+  if(!crop){alert(s('crop_name')+' ?');return;}
+  const data=buildPayload('y');
+  if(!data) return;
+  data.crop=crop;
+  const btn=document.getElementById('y-queryBtn');
+  btn.classList.add('loading'); btn.innerHTML=`<span>⏳</span> ${s('checking')}`;
+  setStep('y',3);
+  const resultEl=document.getElementById('yield-result');
+  resultEl.style.display='block';
+  const emoji=cropEmoji[crop]||'🌿';
+  resultEl.innerHTML=`
+    <div class="yield-card green">
+      <div class="yield-top">
+        <div class="yield-icon">${emoji}</div>
+        <div class="yield-meta">
+          <div class="rlabel">${s('yield_outlook_for')}</div>
+          <div class="yield-crop">${crop}</div>
+          <div class="yield-outlook" style="opacity:.5">${s('checking')}</div>
+        </div>
+      </div>
+      <div class="yield-analysis-box">
+        <div class="exp-label">${s('yield_analysis')}</div>
+        <div class="exp-loading"><div class="spinner"></div> ${s('generating')} ${selectedLang}…</div>
+      </div>
+    </div>`;
+  try{
+    const res=await fetch('/yield_query',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    const rawText=await res.text();
+    let json;
+    try{json=JSON.parse(rawText);}catch{
+      resultEl.innerHTML=`<div class="error-card">⚠️ Unexpected server response.<br><pre style="font-size:.8rem;margin-top:.5rem;white-space:pre-wrap">${rawText.slice(0,400)}</pre></div>`;
+      return;
+    }
+    if(json.error){resultEl.innerHTML=`<div class="error-card">⚠️ ${json.error}</div>`;return;}
+    const analysis=(json.analysis&&json.analysis.trim().length>0)?json.analysis.trim():'Analysis not available.';
+    const locLine=loc.y?`<div class="location-used" style="font-size:.78rem;opacity:.7;margin-top:.2rem">📍 ${loc.y.name}</div>`:'';
+    const unknownNote=!json.known_crop?`<div style="font-size:.78rem;opacity:.7;margin-top:.2rem">⚠️ "${json.crop}" not in training data.</div>`:'';
+    resultEl.innerHTML=`
+      <div class="yield-card ${json.outlook_color}">
+        <div class="yield-top">
+          <div class="yield-icon">${emoji}</div>
+          <div class="yield-meta">
+            <div class="rlabel">${s('yield_outlook_for')}</div>
+            <div class="yield-crop">${json.crop}</div>
+            <div class="yield-outlook">📊 ${json.outlook} Yield Expected</div>
+            ${locLine}${unknownNote}
+          </div>
+        </div>
+        <div class="yield-stats">
+          <div class="yield-stat">
+            <div class="stat-val">${json.suitability_score}%</div>
+            <div class="stat-label">${s('suitability')} ${json.crop}</div>
+          </div>
+          <div class="yield-stat">
+            <div class="stat-val" style="font-size:1rem;text-transform:capitalize">${json.best_alternative}</div>
+            <div class="stat-label">${s('best_for_field')}</div>
+          </div>
+        </div>
+        <div class="yield-analysis-box">
+          <div class="exp-label">${s('yield_analysis')} · ${json.language}</div>
+          <div class="exp-text">${analysis}</div>
+        </div>
+      </div>`;
+  }catch(err){
+    resultEl.innerHTML=`<div class="error-card">⚠️ Could not connect to server.<br><small>${err.message}</small></div>`;
+  }finally{btn.classList.remove('loading');btn.innerHTML=`<span>🔍</span> <span data-i18n="yield_btn">${s('yield_btn')}</span>`;}
+}
+
+// Apply on page load
+applyTranslations();
+</script>
+</body>
+</html>
