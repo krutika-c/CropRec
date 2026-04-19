@@ -1,0 +1,1435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CropSense — Smart Crop Advisor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --soil:    #3b2a1a;
+      --earth:   #6b4c2a;
+      --sage:    #7a9e7e;
+      --leaf:    #4a7c59;
+      --gold:    #d4a843;
+      --offwhite:#faf7f2;
+      --mist:    #e8e2d6;
+      --shadow:  rgba(59,42,26,0.15);
+      --blue:    #3b7fc4;
+      --red:     #c0392b;
+      --orange:  #e07b2a;
+    }
+    body { font-family:'DM Sans',sans-serif; background:var(--offwhite); color:var(--soil); min-height:100vh; overflow-x:hidden; }
+    body::before {
+      content:''; position:fixed; inset:0; z-index:-1;
+      background:
+        radial-gradient(ellipse 80% 60% at 10% 20%,rgba(122,158,126,.12) 0%,transparent 60%),
+        radial-gradient(ellipse 60% 80% at 90% 80%,rgba(212,168,67,.08) 0%,transparent 60%),
+        var(--offwhite);
+    }
+
+    /* ── Header ── */
+    header {
+      padding:1.5rem 2.5rem;
+      display:flex; align-items:center; justify-content:space-between;
+      border-bottom:1.5px solid var(--mist); flex-wrap:wrap; gap:1rem;
+    }
+    .logo { display:flex; align-items:flex-end; gap:.9rem; }
+    .logo-mark { width:44px;height:44px;background:var(--leaf);border-radius:11px;display:grid;place-items:center;font-size:1.4rem;flex-shrink:0;box-shadow:0 4px 14px rgba(74,124,89,.3); }
+    .logo-text h1 { font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:900;letter-spacing:-.02em;line-height:1; }
+    .logo-text p { font-size:.75rem;color:var(--earth);letter-spacing:.08em;text-transform:uppercase;font-weight:300;margin-top:2px; }
+    .lang-switcher { display:flex;align-items:center;gap:.6rem; }
+    .lang-label { font-size:.72rem;color:var(--earth);text-transform:uppercase;letter-spacing:.08em;font-weight:500;white-space:nowrap; }
+    .lang-select {
+      border:1.5px solid var(--mist); border-radius:10px;
+      padding:.45rem 2.2rem .45rem .85rem;
+      font-family:'DM Sans',sans-serif; font-size:.88rem; font-weight:500;
+      color:var(--soil); background:white; cursor:pointer; outline:none;
+      appearance:none;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b4c2a' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat:no-repeat; background-position:right .75rem center;
+      transition:border-color .2s, box-shadow .2s;
+    }
+    .lang-select:hover { border-color:var(--sage); }
+    .lang-select:focus { border-color:var(--sage); box-shadow:0 0 0 3px rgba(122,158,126,.15); }
+
+    /* ── Tabs ── */
+    .tab-bar {
+      display:flex; gap:0;
+      border-bottom:2px solid var(--mist);
+      padding:0 2.5rem;
+      background:white;
+    }
+    .tab-btn {
+      padding:1rem 1.6rem;
+      font-family:'DM Sans',sans-serif; font-size:.9rem; font-weight:500;
+      background:none; border:none; cursor:pointer;
+      color:var(--earth);
+      border-bottom:3px solid transparent;
+      margin-bottom:-2px;
+      transition:color .18s, border-color .18s;
+      display:flex; align-items:center; gap:.5rem;
+    }
+    .tab-btn:hover { color:var(--leaf); }
+    .tab-btn.active { color:var(--leaf); border-bottom-color:var(--leaf); font-weight:600; }
+
+    /* ── Main ── */
+    main { max-width:900px;margin:0 auto;padding:2.5rem 2rem 5rem; }
+    .tab-panel { display:none; }
+    .tab-panel.active { display:block; }
+
+    .hero { margin-bottom:2rem; }
+    .hero h2 { font-family:'Playfair Display',serif;font-size:clamp(1.7rem,4.5vw,2.8rem);font-weight:700;line-height:1.15;max-width:560px; }
+    .hero h2 em { font-style:normal;color:var(--leaf); }
+    .hero p { margin-top:.8rem;color:var(--earth);font-size:.95rem;font-weight:300;max-width:500px;line-height:1.7; }
+
+    /* Steps */
+    .steps { display:flex;align-items:center;margin-bottom:1.8rem; }
+    .step { display:flex;align-items:center;gap:.45rem;font-size:.75rem;font-weight:500;letter-spacing:.05em;text-transform:uppercase;color:#bbb; }
+    .step.active { color:var(--leaf); }
+    .step.done { color:var(--gold); }
+    .step-num { width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:.7rem;font-weight:700;background:#e8e2d6;color:#999;flex-shrink:0; }
+    .step.active .step-num { background:var(--leaf);color:white; }
+    .step.done .step-num { background:var(--gold);color:white; }
+    .step-sep { width:28px;height:1.5px;background:var(--mist);margin:0 .4rem;flex-shrink:0; }
+
+    /* Cards */
+    .card { background:white;border:1.5px solid var(--mist);border-radius:20px;padding:2rem 2.5rem;box-shadow:0 6px 36px var(--shadow);margin-bottom:1.4rem; }
+    .card-title { font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;margin-bottom:1.4rem;display:flex;align-items:center;gap:.6rem; }
+    .card-title::before { content:'';width:16px;height:3px;background:var(--gold);border-radius:2px; }
+
+    /* Location */
+    .location-row { display:flex;gap:.8rem;align-items:flex-start; }
+    .location-input-wrap { flex:1;position:relative; }
+    .location-input-wrap input { width:100%;border:1.5px solid var(--mist);border-radius:10px;padding:.72rem 1rem .72rem 2.5rem;font-family:'DM Sans',sans-serif;font-size:.95rem;color:var(--soil);background:var(--offwhite);outline:none;transition:border-color .2s,box-shadow .2s; }
+    .location-input-wrap input:focus { border-color:var(--sage);box-shadow:0 0 0 3px rgba(122,158,126,.15);background:white; }
+    .location-icon { position:absolute;left:.85rem;top:50%;transform:translateY(-50%);font-size:.95rem;pointer-events:none; }
+    .autocomplete-list { position:absolute;top:calc(100% + 4px);left:0;right:0;background:white;border:1.5px solid var(--mist);border-radius:10px;box-shadow:0 8px 24px var(--shadow);z-index:100;max-height:220px;overflow-y:auto; }
+    .autocomplete-item { padding:.65rem 1rem;font-size:.88rem;cursor:pointer;border-bottom:1px solid var(--mist);transition:background .15s; }
+    .autocomplete-item:last-child { border-bottom:none; }
+    .autocomplete-item:hover,.autocomplete-item.selected { background:var(--offwhite); }
+    .autocomplete-item .city { font-weight:500; }
+    .autocomplete-item .region { color:var(--earth);font-size:.78rem; }
+    .btn-fetch { padding:.72rem 1.3rem;background:var(--blue);color:white;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:500;cursor:pointer;white-space:nowrap;transition:background .2s,transform .15s;box-shadow:0 3px 12px rgba(59,127,196,.28);display:flex;align-items:center;gap:.4rem; }
+    .btn-fetch:hover { background:#2e6aab;transform:translateY(-1px); }
+    .btn-fetch:active { transform:translateY(0); }
+    .btn-fetch:disabled { opacity:.6;pointer-events:none; }
+    .status-msg { font-size:.82rem;margin-top:.75rem;padding:.45rem .8rem;border-radius:8px;display:none; }
+    .status-msg.info    { background:#e8f4fd;color:#2563a8;display:block; }
+    .status-msg.success { background:rgba(122,158,126,.12);color:var(--leaf);display:block; }
+    .status-msg.error   { background:#fff3f3;color:var(--red);display:block; }
+    .weather-pills { display:flex;gap:.7rem;flex-wrap:wrap;margin-top:.9rem; }
+    .weather-pill { display:flex;align-items:center;gap:.45rem;background:var(--offwhite);border:1.5px solid var(--mist);border-radius:50px;padding:.38rem .9rem;font-size:.83rem;transition:border-color .3s,background .3s; }
+    .weather-pill .pill-label { color:var(--earth);font-size:.73rem; }
+    .weather-pill .pill-val { font-weight:500; }
+    .weather-pill.fetched { border-color:var(--sage);background:rgba(122,158,126,.08); }
+
+    /* Fields */
+    .section-label { font-size:.72rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--earth);margin-bottom:1rem;display:flex;align-items:center;gap:.5rem; }
+    .section-label::after { content:'';flex:1;height:1px;background:var(--mist); }
+    .field-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:1.2rem; }
+    .field { display:flex;flex-direction:column;gap:.4rem; }
+    .field label { font-size:.7rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--earth); }
+    .field .hint { font-size:.67rem;color:#aaa;margin-top:-.15rem; }
+    .field input,.field select {
+      border:1.5px solid var(--mist);border-radius:10px;padding:.68rem 1rem;
+      font-family:'DM Sans',sans-serif;font-size:.93rem;color:var(--soil);
+      background:var(--offwhite);outline:none;
+      transition:border-color .2s,box-shadow .2s,background .3s;
+    }
+    .field input:not([readonly]):focus,.field select:focus { border-color:var(--sage);box-shadow:0 0 0 3px rgba(122,158,126,.15);background:white; }
+    .field input.auto-filled { border-color:var(--sage);background:rgba(122,158,126,.07);color:var(--leaf);font-weight:500; }
+    .field input[readonly] { cursor:default; }
+    .field input::placeholder { color:#c8bfb0; }
+    .field select { appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b4c2a' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 1rem center;padding-right:2.5rem;cursor:pointer; }
+    .divider { height:1.5px;background:var(--mist);margin:1.8rem 0;border-radius:2px; }
+
+    /* Crop input with datalist */
+    .crop-input-wrap { position:relative; }
+    .crop-input-wrap input { width:100%; }
+
+    /* Buttons */
+    .btn-primary {
+      display:flex;align-items:center;justify-content:center;gap:.6rem;width:100%;padding:1rem;
+      background:var(--leaf);color:white;font-family:'DM Sans',sans-serif;font-size:1rem;font-weight:500;
+      border:none;border-radius:12px;cursor:pointer;
+      transition:background .2s,transform .15s,box-shadow .2s;
+      box-shadow:0 4px 18px rgba(74,124,89,.3);
+    }
+    .btn-primary:hover { background:#3d6b49;box-shadow:0 6px 24px rgba(74,124,89,.4);transform:translateY(-1px); }
+    .btn-primary:active { transform:translateY(0); }
+    .btn-primary.loading { opacity:.7;pointer-events:none; }
+
+    /* ── Predict result ── */
+    #predict-result { margin-top:1.8rem;display:none;animation:fadeUp .4s ease; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);} }
+    .result-card { background:linear-gradient(135deg,var(--leaf) 0%,#3d6b49 100%);color:white;border-radius:16px;padding:1.8rem;box-shadow:0 8px 32px rgba(74,124,89,.35); }
+    .result-top { display:flex;align-items:center;gap:1.4rem; }
+    .crop-icon { font-size:2.8rem;flex-shrink:0;filter:drop-shadow(0 2px 8px rgba(0,0,0,.2)); }
+    .result-text .rlabel { font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;opacity:.75; }
+    .result-text .crop-name { font-family:'Playfair Display',serif;font-size:2rem;font-weight:900;line-height:1.1;text-transform:capitalize; }
+    .result-text .location-used { font-size:.78rem;opacity:.7;margin-top:.2rem; }
+    .confidence-bar-wrap { margin-top:.6rem;display:flex;align-items:center;gap:.7rem; }
+    .confidence-bar-bg { flex:1;height:6px;background:rgba(255,255,255,.2);border-radius:3px;overflow:hidden; }
+    .confidence-bar-fill { height:100%;background:var(--gold);border-radius:3px;transition:width .8s cubic-bezier(.22,.61,.36,1); }
+    .confidence-pct { font-size:.82rem;font-weight:500;opacity:.9;white-space:nowrap; }
+    .conf-explain {
+      margin-top:.65rem;
+      font-size:.82rem; line-height:1.55; opacity:.88; font-weight:300;
+      background:rgba(255,255,255,.12);
+      border:1px solid rgba(255,255,255,.18);
+      border-radius:8px; padding:.55rem .8rem;
+    }
+    .conf-explain strong { font-weight:600; }
+    .conf-explain em { font-style:normal; text-decoration:underline; text-underline-offset:2px; }
+    .explanation-box { margin-top:1.2rem;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.22);border-radius:12px;padding:1rem 1.2rem; }
+    .exp-label { font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;opacity:.75;margin-bottom:.55rem;display:flex;align-items:center;gap:.4rem; }
+    .exp-text { font-size:.97rem;line-height:1.7;opacity:.97;font-weight:300; }
+
+    /* ── Yield result ── */
+    #yield-result { margin-top:1.8rem;display:none;animation:fadeUp .4s ease; }
+
+    .yield-card { border-radius:16px;padding:1.8rem;color:white;box-shadow:0 8px 32px rgba(0,0,0,.2); }
+    .yield-card.green  { background:linear-gradient(135deg,#4a7c59,#3d6b49); }
+    .yield-card.yellow { background:linear-gradient(135deg,#b8922a,#9a7820); }
+    .yield-card.orange { background:linear-gradient(135deg,#c0622a,#a04f1e); }
+    .yield-card.red    { background:linear-gradient(135deg,#c0392b,#a02d23); }
+
+    .yield-top { display:flex;align-items:center;gap:1.4rem;margin-bottom:1.2rem; }
+    .yield-icon { font-size:2.8rem;flex-shrink:0;filter:drop-shadow(0 2px 8px rgba(0,0,0,.2)); }
+    .yield-meta .rlabel { font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;opacity:.75; }
+    .yield-meta .yield-crop { font-family:'Playfair Display',serif;font-size:2rem;font-weight:900;line-height:1.1;text-transform:capitalize; }
+    .yield-meta .yield-outlook { font-size:1rem;font-weight:600;margin-top:.1rem;opacity:.95; }
+
+    .yield-stats { display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1.2rem; }
+    .yield-stat {
+      flex:1;min-width:100px;
+      background:rgba(255,255,255,.15);
+      border:1px solid rgba(255,255,255,.2);
+      border-radius:10px;padding:.7rem 1rem;text-align:center;
+    }
+    .yield-stat .stat-val { font-size:1.5rem;font-weight:700;line-height:1; }
+    .yield-stat .stat-label { font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;opacity:.75;margin-top:.2rem; }
+
+    .yield-analysis-box { background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.22);border-radius:12px;padding:1rem 1.2rem; }
+    .yield-analysis-box .exp-label { font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;opacity:.75;margin-bottom:.55rem;display:flex;align-items:center;gap:.4rem; }
+    .yield-analysis-box .exp-text { font-size:.97rem;line-height:1.7;opacity:.97;font-weight:300; }
+
+    /* Spinner */
+    .exp-loading { display:flex;align-items:center;gap:.5rem;opacity:.75;font-size:.9rem; }
+    .spinner { width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:white;border-radius:50%;animation:spin .8s linear infinite; }
+    @keyframes spin { to{transform:rotate(360deg);} }
+
+    .error-card { background:#fff3f3;border:1.5px solid #fcc;color:var(--red);border-radius:12px;padding:1rem 1.3rem;font-size:.9rem; }
+    /* ── Fertilizer card ── */
+    .fert-card { background:white; border:1.5px solid var(--mist); border-radius:16px; padding:1.4rem 1.6rem; margin-top:1.2rem; }
+    .fert-title { font-family:'Playfair Display',serif; font-size:1rem; font-weight:700; margin-bottom:1.1rem; display:flex; align-items:center; gap:.5rem; color:var(--soil); }
+    .fert-rows { display:flex; flex-direction:column; gap:.7rem; }
+    .fert-row { border-radius:10px; padding:.7rem 1rem; border:1.5px solid var(--mist); }
+    .fert-row.good    { border-color:#b7ddc0; background:#f2fbf4; }
+    .fert-row.low     { border-color:#f5c97a; background:#fffbf0; }
+    .fert-row.excess  { border-color:#f5a97a; background:#fff6f0; }
+    .fert-row.high    { border-color:#f5a97a; background:#fff6f0; }
+    .fert-row-header  { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.4rem; }
+    .fert-nutrient    { font-weight:600; font-size:.9rem; color:var(--soil); display:flex; align-items:center; gap:.4rem; }
+    .fert-badge       { font-size:.68rem; font-weight:600; letter-spacing:.07em; text-transform:uppercase; padding:.2rem .55rem; border-radius:20px; }
+    .fert-badge.good  { background:#d1f0db; color:#2d6e3e; }
+    .fert-badge.low   { background:#fde9b0; color:#7a5000; }
+    .fert-badge.excess{ background:#fdd5b0; color:#7a2e00; }
+    .fert-badge.high  { background:#fdd5b0; color:#7a2e00; }
+    .fert-values      { font-size:.78rem; color:var(--earth); margin-top:.25rem; }
+    .fert-suggestions { margin-top:.75rem; display:flex; flex-direction:column; gap:.55rem; }
+    .fert-item        { background:white; border:1px solid var(--mist); border-radius:8px; padding:.6rem .85rem; }
+    .fert-item-name   { font-weight:600; font-size:.88rem; color:var(--leaf); margin-bottom:.3rem; }
+    .fert-item-detail { font-size:.78rem; color:var(--earth); display:grid; grid-template-columns:80px 1fr; gap:.15rem .5rem; line-height:1.5; }
+    .fert-item-detail span:nth-child(odd) { font-weight:500; color:var(--soil); }
+    .fert-excess-note { font-size:.82rem; color:#a05000; margin-top:.4rem; font-style:italic; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">🌾</div>
+    <div class="logo-text"><h1>CropSense</h1><p>AI-Powered Crop Advisor</p></div>
+  </div>
+  <div class="lang-switcher">
+    <span class="lang-label">🌐 Language</span>
+    <select class="lang-select" id="langSelect" onchange="setLang(this)">
+      <option value="English">English</option>
+      <option value="Hindi">हिन्दी — Hindi</option>
+      <option value="Telugu">తెలుగు — Telugu</option>
+      <option value="Tamil">தமிழ் — Tamil</option>
+      <option value="Kannada">ಕನ್ನಡ — Kannada</option>
+      <option value="Marathi">मराठी — Marathi</option>
+      <option value="Bengali">বাংলা — Bengali</option>
+      <option value="Punjabi">ਪੰਜਾਬੀ — Punjabi</option>
+      <option value="Gujarati">ગુજરાતી — Gujarati</option>
+      <option value="Odia">ଓଡ଼ିଆ — Odia</option>
+    </select>
+  </div>
+</header>
+
+<!-- Tab Bar -->
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('predict', this)">🌱 Predict Best Crop</button>
+  <button class="tab-btn" onclick="switchTab('yield', this)">🔍 Yield Query</button>
+</div>
+
+<main>
+
+  <!-- ══════════ TAB 1: PREDICT ══════════ -->
+  <div class="tab-panel active" id="tab-predict">
+    <div class="hero">
+      <h2>Find the <em>perfect crop</em> for your field</h2>
+      <p>Type your village or district — we'll auto-fetch the weather. Add your soil values and get a recommendation with explanation in your language.</p>
+    </div>
+
+    <div class="steps">
+      <div class="step active" id="p-step1"><div class="step-num">1</div> Location</div>
+      <div class="step-sep"></div>
+      <div class="step" id="p-step2"><div class="step-num">2</div> Soil Values</div>
+      <div class="step-sep"></div>
+      <div class="step" id="p-step3"><div class="step-num">3</div> Result</div>
+    </div>
+
+    <!-- Location -->
+    <div class="card">
+      <div class="card-title">Your Location</div>
+      <div class="location-row">
+        <div class="location-input-wrap">
+          <span class="location-icon">📍</span>
+          <input type="text" id="p-locationInput" placeholder="Type your village, town or district…" autocomplete="off"
+            oninput="onLocationInput('p')" onkeydown="onLocationKey(event,'p')"/>
+          <div class="autocomplete-list" id="p-autocompleteList" style="display:none"></div>
+        </div>
+        <button class="btn-fetch" id="p-fetchBtn" onclick="fetchWeather('p')"><span>☁️</span> Fetch Weather</button>
+      </div>
+      <div class="status-msg" id="p-locationStatus"></div>
+      <div class="weather-pills">
+        <div class="weather-pill" id="p-pill-temp"><span>🌡️</span><span class="pill-label">Temperature</span><span class="pill-val" id="p-pill-temp-val">—</span></div>
+        <div class="weather-pill" id="p-pill-hum"><span>💧</span><span class="pill-label">Humidity</span><span class="pill-val" id="p-pill-hum-val">—</span></div>
+      </div>
+    </div>
+
+    <!-- Soil + Predict -->
+    <div class="card">
+      <div class="section-label">From Soil Health Card</div>
+      <div class="field-grid">
+        <div class="field"><label>Nitrogen (N)</label><span class="hint">mg/kg · 0–140</span><input type="number" id="p-N" placeholder="e.g. 90" step="any"/></div>
+        <div class="field"><label>Phosphorus (P)</label><span class="hint">mg/kg · 5–145</span><input type="number" id="p-P" placeholder="e.g. 42" step="any"/></div>
+        <div class="field"><label>Potassium (K)</label><span class="hint">mg/kg · 5–205</span><input type="number" id="p-K" placeholder="e.g. 43" step="any"/></div>
+        <div class="field"><label>Soil pH</label><span class="hint">0–14 · typical 5.5–8</span><input type="number" id="p-ph" placeholder="e.g. 6.5" step="any"/></div>
+      </div>
+      <div class="divider"></div>
+      <div class="section-label">Auto-fetched Climate Data</div>
+      <div class="field-grid" style="margin-bottom:1.8rem">
+        <div class="field"><label>Temperature (°C)</label><span class="hint">Auto-filled from weather API</span><input type="number" id="p-temperature" placeholder="Fetch location ↑" step="any" readonly/></div>
+        <div class="field"><label>Humidity (%)</label><span class="hint">Auto-filled from weather API</span><input type="number" id="p-humidity" placeholder="Fetch location ↑" step="any" readonly/></div>
+        <div class="field"><label>Annual Rainfall (mm)</label><span class="hint">Enter your region's yearly average</span><input type="number" id="p-rainfall" placeholder="e.g. 200" step="any"/></div>
+      </div>
+      <button class="btn-primary" id="p-predictBtn" onclick="runPredict()"><span>🌱</span> Predict Best Crop</button>
+      <div id="predict-result"></div>
+    </div>
+  </div>
+
+  <!-- ══════════ TAB 2: YIELD QUERY ══════════ -->
+  <div class="tab-panel" id="tab-yield">
+    <div class="hero">
+      <h2>Check yield for <em>your chosen crop</em></h2>
+      <p>Already have a crop in mind? Enter it along with your field's soil and climate data — we'll tell you how good the yield is likely to be and what to watch out for.</p>
+    </div>
+
+    <div class="steps">
+      <div class="step active" id="y-step1"><div class="step-num">1</div> Location</div>
+      <div class="step-sep"></div>
+      <div class="step" id="y-step2"><div class="step-num">2</div> Crop & Soil</div>
+      <div class="step-sep"></div>
+      <div class="step" id="y-step3"><div class="step-num">3</div> Yield Report</div>
+    </div>
+
+    <!-- Location (yield tab) -->
+    <div class="card">
+      <div class="card-title">Your Location</div>
+      <div class="location-row">
+        <div class="location-input-wrap">
+          <span class="location-icon">📍</span>
+          <input type="text" id="y-locationInput" placeholder="Type your village, town or district…" autocomplete="off"
+            oninput="onLocationInput('y')" onkeydown="onLocationKey(event,'y')"/>
+          <div class="autocomplete-list" id="y-autocompleteList" style="display:none"></div>
+        </div>
+        <button class="btn-fetch" id="y-fetchBtn" onclick="fetchWeather('y')"><span>☁️</span> Fetch Weather</button>
+      </div>
+      <div class="status-msg" id="y-locationStatus"></div>
+      <div class="weather-pills">
+        <div class="weather-pill" id="y-pill-temp"><span>🌡️</span><span class="pill-label">Temperature</span><span class="pill-val" id="y-pill-temp-val">—</span></div>
+        <div class="weather-pill" id="y-pill-hum"><span>💧</span><span class="pill-label">Humidity</span><span class="pill-val" id="y-pill-hum-val">—</span></div>
+      </div>
+    </div>
+
+    <!-- Crop + Soil -->
+    <div class="card">
+      <div class="section-label">Crop You Want to Grow</div>
+      <div class="field-grid" style="margin-bottom:1.4rem">
+        <div class="field" style="grid-column:1/-1">
+          <label>Crop Name</label>
+          <span class="hint">Type or pick from the list</span>
+          <div class="crop-input-wrap">
+            <input type="text" id="y-crop" placeholder="e.g. rice, maize, banana…" list="crop-list" autocomplete="off"/>
+            <datalist id="crop-list">
+              <option value="apple"/><option value="banana"/><option value="blackgram"/>
+              <option value="chickpea"/><option value="coconut"/><option value="coffee"/>
+              <option value="cotton"/><option value="grapes"/><option value="jute"/>
+              <option value="kidneybeans"/><option value="lentil"/><option value="maize"/>
+              <option value="mango"/><option value="mothbeans"/><option value="mungbean"/>
+              <option value="muskmelon"/><option value="orange"/><option value="papaya"/>
+              <option value="pigeonpeas"/><option value="pomegranate"/><option value="rice"/>
+              <option value="watermelon"/>
+            </datalist>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-label">From Soil Health Card</div>
+      <div class="field-grid">
+        <div class="field"><label>Nitrogen (N)</label><span class="hint">mg/kg · 0–140</span><input type="number" id="y-N" placeholder="e.g. 90" step="any"/></div>
+        <div class="field"><label>Phosphorus (P)</label><span class="hint">mg/kg · 5–145</span><input type="number" id="y-P" placeholder="e.g. 42" step="any"/></div>
+        <div class="field"><label>Potassium (K)</label><span class="hint">mg/kg · 5–205</span><input type="number" id="y-K" placeholder="e.g. 43" step="any"/></div>
+        <div class="field"><label>Soil pH</label><span class="hint">0–14 · typical 5.5–8</span><input type="number" id="y-ph" placeholder="e.g. 6.5" step="any"/></div>
+      </div>
+      <div class="divider"></div>
+      <div class="section-label">Auto-fetched Climate Data</div>
+      <div class="field-grid" style="margin-bottom:1.8rem">
+        <div class="field"><label>Temperature (°C)</label><span class="hint">Auto-filled from weather API</span><input type="number" id="y-temperature" placeholder="Fetch location ↑" step="any" readonly/></div>
+        <div class="field"><label>Humidity (%)</label><span class="hint">Auto-filled from weather API</span><input type="number" id="y-humidity" placeholder="Fetch location ↑" step="any" readonly/></div>
+        <div class="field"><label>Annual Rainfall (mm)</label><span class="hint">Enter your region's yearly average</span><input type="number" id="y-rainfall" placeholder="e.g. 200" step="any"/></div>
+      </div>
+      <button class="btn-primary" id="y-queryBtn" onclick="runYieldQuery()"><span>🔍</span> Check Yield Outlook</button>
+      <div id="yield-result"></div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  /* ── State ── */
+  const cropEmoji = {
+    apple:'🍎',banana:'🍌',blackgram:'🫘',chickpea:'🫘',coconut:'🥥',
+    coffee:'☕',cotton:'🌿',grapes:'🍇',jute:'🌾',kidneybeans:'🫘',
+    lentil:'🫘',maize:'🌽',mango:'🥭',mothbeans:'🫘',mungbean:'🫘',
+    muskmelon:'🍈',orange:'🍊',papaya:'🍑',pigeonpeas:'🫘',
+    pomegranate:'🍎',rice:'🍚',watermelon:'🍉'
+  };
+
+  let selectedLang = 'English';
+  const loc = { p: null, y: null };
+  const acResults = { p: [], y: [] };
+  let debounceTimers = { p: null, y: null };
+  let selIdx = { p: -1, y: -1 };
+
+  /* ── UI String Translations ── */
+  const UI_STRINGS = {
+    English: {
+      langLabel: '🌐 Language',
+      tab_predict: '🌱 Predict Best Crop',
+      tab_yield:   '🔍 Yield Query',
+      hero1_h2:    'Find the <em>perfect crop</em> for your field',
+      hero1_p:     "Type your village or district — we'll auto-fetch the weather. Add your soil values and get a recommendation with explanation in your language.",
+      hero2_h2:    'Check yield for <em>your chosen crop</em>',
+      hero2_p:     "Already have a crop in mind? Enter it along with your field's soil and climate data — we'll tell you how good the yield is likely to be and what to watch out for.",
+      step_location: 'Location', step_soil: 'Soil Values', step_result: 'Result',
+      step_crop: 'Crop & Soil', step_yield_result: 'Yield Report',
+      card_location: 'Your Location',
+      loc_placeholder: 'Type your village, town or district…',
+      btn_fetch_weather: '☁️ Fetch Weather',
+      pill_temp: 'Temperature', pill_hum: 'Humidity',
+      sec_soil: 'From Soil Health Card',
+      sec_climate: 'Auto-fetched Climate Data',
+      lbl_N: 'Nitrogen (N)', hint_N: 'mg/kg · 0–140', ph_N: 'e.g. 90',
+      lbl_P: 'Phosphorus (P)', hint_P: 'mg/kg · 5–145', ph_P: 'e.g. 42',
+      lbl_K: 'Potassium (K)', hint_K: 'mg/kg · 5–205', ph_K: 'e.g. 43',
+      lbl_ph: 'Soil pH', hint_ph: '0–14 · typical 5.5–8', ph_ph: 'e.g. 6.5',
+      lbl_temp: 'Temperature (°C)', hint_temp: 'Auto-filled from weather API', ph_temp: 'Fetch location ↑',
+      lbl_hum: 'Humidity (%)', hint_hum: 'Auto-filled from weather API', ph_hum: 'Fetch location ↑',
+      lbl_rain: 'Annual Rainfall (mm)', hint_rain: "Enter your region's yearly average", ph_rain: 'e.g. 200',
+      btn_predict: '🌱 Predict Best Crop',
+      sec_crop: 'Crop You Want to Grow',
+      lbl_crop: 'Crop Name', hint_crop: 'Type or pick from the list', ph_crop: 'e.g. rice, maize, banana…',
+      btn_yield: '🔍 Check Yield Outlook',
+      fert_title: '🧪 Fertilizer & Soil Amendment Guide',
+      fert_good: 'Good', fert_low: 'Low — Apply Fertilizer',
+      fert_excess: 'Excess — Skip Fertilizing', fert_high: 'Too High — Amend Soil',
+      alert_N: 'Please enter Nitrogen (N).', alert_P: 'Please enter Phosphorus (P).', alert_K: 'Please enter Potassium (K).', alert_ph: 'Please enter Soil pH.',
+      alert_weather: 'Please fetch weather data first.',
+      alert_rainfall: 'Please enter your region\'s annual average rainfall (mm).\n\nTip: Hyderabad gets ~800mm/year, Mumbai ~2400mm/year, Delhi ~790mm/year.',
+      alert_crop: 'Please enter the crop name you want to grow.',
+      status_searching: 'Searching for location…', status_not_found: 'Location not found. Try a nearby town or district.',
+      status_loc_fail: 'Could not search location.', status_fetching: 'Fetching weather for',
+      status_fetched: '✅ Weather fetched for', status_weather_fail: 'Could not fetch weather. Check your internet.',
+      loading_analyzing: 'Analyzing…', loading_checking: 'Checking…',
+      lbl_recommended: 'Recommended Crop', lbl_why: '💡 Why this crop?',
+      lbl_yield_for: 'Yield Outlook For', lbl_yield_analysis: '📋 Yield Analysis',
+      lbl_match: 'How well your conditions match',
+      lbl_best_crop: 'Best crop for your field right now',
+      lbl_your_value: 'Your value', lbl_ideal_for: 'Ideal for',
+      lbl_calculating: 'Calculating…',
+      lbl_generating: 'Generating report in',
+      fert_excess_note_tpl: 'Excess {n} can harm the crop. Avoid nitrogen-heavy fertilizers this season and let levels deplete naturally.',
+      lbl_dose: 'Dose', lbl_timing: 'Timing', lbl_method: 'Method',
+      not_in_training: 'not in training data — analysis is based on general knowledge.',
+      unknown_note_pre: '⚠️ "',
+    },
+    Hindi: {
+      langLabel: '🌐 भाषा',
+      tab_predict: '🌱 सर्वश्रेष्ठ फसल चुनें',
+      tab_yield:   '🔍 उपज जाँच',
+      hero1_h2:    'अपने खेत के लिए <em>सही फसल</em> खोजें',
+      hero1_p:     'अपना गाँव या जिला टाइप करें — हम मौसम डेटा स्वचालित रूप से लाएँगे। मिट्टी के मान दर्ज करें और अपनी भाषा में अनुशंसा प्राप्त करें।',
+      hero2_h2:    'अपनी <em>चुनी हुई फसल</em> की उपज जाँचें',
+      hero2_p:     'क्या आपके मन में पहले से फसल है? उसे मिट्टी और जलवायु डेटा के साथ दर्ज करें — हम बताएंगे कि उपज कैसी होगी।',
+      step_location: 'स्थान', step_soil: 'मिट्टी के मान', step_result: 'परिणाम',
+      step_crop: 'फसल और मिट्टी', step_yield_result: 'उपज रिपोर्ट',
+      card_location: 'आपका स्थान',
+      loc_placeholder: 'गाँव, शहर या जिला टाइप करें…',
+      btn_fetch_weather: '☁️ मौसम लाएँ',
+      pill_temp: 'तापमान', pill_hum: 'आर्द्रता',
+      sec_soil: 'मृदा स्वास्थ्य कार्ड से',
+      sec_climate: 'स्वत: प्राप्त जलवायु डेटा',
+      lbl_N: 'नाइट्रोजन (N)', hint_N: 'मिग्रा/किग्रा · 0–140', ph_N: 'जैसे 90',
+      lbl_P: 'फास्फोरस (P)', hint_P: 'मिग्रा/किग्रा · 5–145', ph_P: 'जैसे 42',
+      lbl_K: 'पोटेशियम (K)', hint_K: 'मिग्रा/किग्रा · 5–205', ph_K: 'जैसे 43',
+      lbl_ph: 'मिट्टी pH', hint_ph: '0–14 · सामान्य 5.5–8', ph_ph: 'जैसे 6.5',
+      lbl_temp: 'तापमान (°C)', hint_temp: 'मौसम API से स्वत: भरा', ph_temp: 'स्थान लाएँ ↑',
+      lbl_hum: 'आर्द्रता (%)', hint_hum: 'मौसम API से स्वत: भरा', ph_hum: 'स्थान लाएँ ↑',
+      lbl_rain: 'वार्षिक वर्षा (मिमी)', hint_rain: 'अपने क्षेत्र का वार्षिक औसत दर्ज करें', ph_rain: 'जैसे 200',
+      btn_predict: '🌱 सर्वश्रेष्ठ फसल चुनें',
+      sec_crop: 'जो फसल आप उगाना चाहते हैं',
+      lbl_crop: 'फसल का नाम', hint_crop: 'टाइप करें या सूची से चुनें', ph_crop: 'जैसे चावल, मक्का, केला…',
+      btn_yield: '🔍 उपज दृष्टिकोण जाँचें',
+      fert_title: '🧪 उर्वरक और मिट्टी सुधार मार्गदर्शिका',
+      fert_good: 'अच्छा', fert_low: 'कम — उर्वरक लगाएँ',
+      fert_excess: 'अधिक — उर्वरक न डालें', fert_high: 'बहुत अधिक — मिट्टी सुधारें',
+      alert_N: 'कृपया नाइट्रोजन (N) दर्ज करें।', alert_P: 'कृपया फास्फोरस (P) दर्ज करें।', alert_K: 'कृपया पोटेशियम (K) दर्ज करें।', alert_ph: 'कृपया मिट्टी pH दर्ज करें।',
+      alert_weather: 'कृपया पहले मौसम डेटा लाएँ।',
+      alert_rainfall: 'कृपया अपने क्षेत्र की वार्षिक औसत वर्षा (मिमी) दर्ज करें।',
+      alert_crop: 'कृपया उगाने वाली फसल का नाम दर्ज करें।',
+      status_searching: 'स्थान खोजा जा रहा है…', status_not_found: 'स्थान नहीं मिला। पास के कस्बे या जिले का प्रयास करें।',
+      status_loc_fail: 'स्थान खोजने में विफल।', status_fetching: 'मौसम लाया जा रहा है',
+      status_fetched: '✅ मौसम मिला', status_weather_fail: 'मौसम नहीं आया। इंटरनेट जाँचें।',
+      loading_analyzing: 'विश्लेषण हो रहा है…', loading_checking: 'जाँच हो रही है…',
+      lbl_recommended: 'अनुशंसित फसल', lbl_why: '💡 यह फसल क्यों?',
+      lbl_yield_for: 'उपज दृष्टिकोण', lbl_yield_analysis: '📋 उपज विश्लेषण',
+      lbl_match: 'आपकी परिस्थितियाँ कितनी मेल खाती हैं',
+      lbl_best_crop: 'अभी आपके खेत के लिए सबसे अच्छी फसल',
+      lbl_your_value: 'आपका मान', lbl_ideal_for: 'के लिए आदर्श',
+      lbl_calculating: 'गणना हो रही है…',
+      lbl_generating: 'रिपोर्ट तैयार हो रही है',
+      fert_excess_note_tpl: 'अधिक {n} फसल को नुकसान पहुँचा सकता है। इस मौसम में नाइट्रोजन उर्वरक से बचें।',
+      lbl_dose: 'खुराक', lbl_timing: 'समय', lbl_method: 'तरीका',
+      not_in_training: 'प्रशिक्षण डेटा में नहीं है — विश्लेषण सामान्य ज्ञान पर आधारित है।',
+      unknown_note_pre: '⚠️ "',
+    },
+    Telugu: {
+      langLabel: '🌐 భాష',
+      tab_predict: '🌱 ఉత్తమ పంట అంచనా',
+      tab_yield:   '🔍 దిగుబడి విచారణ',
+      hero1_h2:    'మీ పొలానికి <em>సరైన పంట</em> కనుగొనండి',
+      hero1_p:     'మీ గ్రామం లేదా జిల్లా టైప్ చేయండి — వాతావరణ డేటా స్వయంచాలకంగా తీసుకుంటాం. నేల విలువలు నమోదు చేసి మీ భాషలో సిఫారసు పొందండి.',
+      hero2_h2:    'మీ <em>ఎంపిక చేసిన పంట</em> దిగుబడి తనిఖీ చేయండి',
+      hero2_p:     'ఇప్పటికే పంట మనసులో ఉందా? నేల మరియు వాతావరణ డేటాతో నమోదు చేయండి — దిగుబడి ఎంత ఉంటుందో చెప్తాం.',
+      step_location: 'స్థానం', step_soil: 'నేల విలువలు', step_result: 'ఫలితం',
+      step_crop: 'పంట & నేల', step_yield_result: 'దిగుబడి నివేదిక',
+      card_location: 'మీ స్థానం',
+      loc_placeholder: 'గ్రామం, పట్టణం లేదా జిల్లా టైప్ చేయండి…',
+      btn_fetch_weather: '☁️ వాతావరణం తీసుకురండి',
+      pill_temp: 'ఉష్ణోగ్రత', pill_hum: 'తేమ',
+      sec_soil: 'నేల ఆరోగ్య కార్డు నుండి',
+      sec_climate: 'స్వయంచాలకంగా తీసిన వాతావరణ డేటా',
+      lbl_N: 'నత్రజని (N)', hint_N: 'మి.గ్రా/కి.గ్రా · 0–140', ph_N: 'ఉదా: 90',
+      lbl_P: 'భాస్వరం (P)', hint_P: 'మి.గ్రా/కి.గ్రా · 5–145', ph_P: 'ఉదా: 42',
+      lbl_K: 'పొటాషియం (K)', hint_K: 'మి.గ్రా/కి.గ్రా · 5–205', ph_K: 'ఉదా: 43',
+      lbl_ph: 'నేల pH', hint_ph: '0–14 · సాధారణం 5.5–8', ph_ph: 'ఉదా: 6.5',
+      lbl_temp: 'ఉష్ణోగ్రత (°C)', hint_temp: 'వాతావరణ API నుండి స్వయంచాలకంగా', ph_temp: 'స్థానం తీసుకురండి ↑',
+      lbl_hum: 'తేమ (%)', hint_hum: 'వాతావరణ API నుండి స్వయంచాలకంగా', ph_hum: 'స్థానం తీసుకురండి ↑',
+      lbl_rain: 'వార్షిక వర్షపాతం (మి.మీ)', hint_rain: 'మీ ప్రాంత వార్షిక సగటు నమోదు చేయండి', ph_rain: 'ఉదా: 200',
+      btn_predict: '🌱 ఉత్తమ పంట అంచనా వేయండి',
+      sec_crop: 'మీరు పెంచాలనుకునే పంట',
+      lbl_crop: 'పంట పేరు', hint_crop: 'టైప్ చేయండి లేదా జాబితా నుండి ఎంచుకోండి', ph_crop: 'ఉదా: వరి, మొక్కజొన్న, అరటి…',
+      btn_yield: '🔍 దిగుబడి అంచనా తనిఖీ చేయండి',
+      fert_title: '🧪 ఎరువులు & నేల సవరణ మార్గదర్శి',
+      fert_good: 'బాగుంది', fert_low: 'తక్కువ — ఎరువు వేయండి',
+      fert_excess: 'అధికం — ఎరువు వేయవద్దు', fert_high: 'చాలా ఎక్కువ — నేల సరిచేయండి',
+      alert_N: 'దయచేసి నత్రజని (N) నమోదు చేయండి.', alert_P: 'దయచేసి భాస్వరం (P) నమోదు చేయండి.', alert_K: 'దయచేసి పొటాషియం (K) నమోదు చేయండి.', alert_ph: 'దయచేసి నేల pH నమోదు చేయండి.',
+      alert_weather: 'దయచేసి ముందు వాతావరణ డేటా తీసుకురండి.',
+      alert_rainfall: 'దయచేసి మీ ప్రాంత వార్షిక సగటు వర్షపాతం (మి.మీ) నమోదు చేయండి.',
+      alert_crop: 'దయచేసి పెంచాలనుకునే పంట పేరు నమోదు చేయండి.',
+      status_searching: 'స్థానం వెతుకుతున్నాం…', status_not_found: 'స్థానం కనుగొనబడలేదు. సమీప పట్టణం లేదా జిల్లా ప్రయత్నించండి.',
+      status_loc_fail: 'స్థానం వెతకలేకపోయాం.', status_fetching: 'వాతావరణం తీసుకుంటున్నాం',
+      status_fetched: '✅ వాతావరణం వచ్చింది', status_weather_fail: 'వాతావరణం రాలేదు. ఇంటర్నెట్ తనిఖీ చేయండి.',
+      loading_analyzing: 'విశ్లేషిస్తున్నాం…', loading_checking: 'తనిఖీ చేస్తున్నాం…',
+      lbl_recommended: 'సిఫారసు చేసిన పంట', lbl_why: '💡 ఈ పంట ఎందుకు?',
+      lbl_yield_for: 'దిగుబడి అంచనా', lbl_yield_analysis: '📋 దిగుబడి విశ్లేషణ',
+      lbl_match: 'మీ పరిస్థితులు ఎంత సరిపోతున్నాయి',
+      lbl_best_crop: 'ఇప్పుడు మీ పొలానికి ఉత్తమ పంట',
+      lbl_your_value: 'మీ విలువ', lbl_ideal_for: 'కు అనువైనది',
+      lbl_calculating: 'లెక్కిస్తున్నాం…',
+      lbl_generating: 'నివేదిక తయారవుతోంది',
+      fert_excess_note_tpl: 'అధిక {n} పంటకు హాని చేయవచ్చు. ఈ సీజన్‌లో నత్రజని ఎరువులు వేయకండి.',
+      lbl_dose: 'మోతాదు', lbl_timing: 'సమయం', lbl_method: 'పద్ధతి',
+      not_in_training: 'శిక్షణ డేటాలో లేదు — విశ్లేషణ సాధారణ జ్ఞానంపై ఆధారపడింది.',
+      unknown_note_pre: '⚠️ "',
+    },
+    Tamil: {
+      langLabel: '🌐 மொழி',
+      tab_predict: '🌱 சிறந்த பயிர் கணிப்பு',
+      tab_yield:   '🔍 மகசூல் விசாரணை',
+      hero1_h2:    'உங்கள் வயலுக்கு <em>சரியான பயிர்</em> கண்டறியுங்கள்',
+      hero1_p:     'உங்கள் கிராமம் அல்லது மாவட்டத்தை உள்ளிடுங்கள் — வானிலை தரவை தானாக கொண்டுவருவோம். மண் மதிப்புகளை சேர்த்து உங்கள் மொழியில் பரிந்துரை பெறுங்கள்.',
+      hero2_h2:    'உங்கள் <em>தேர்ந்த பயிரின்</em> மகசூலை சரிபாருங்கள்',
+      hero2_p:     'ஏற்கனவே பயிர் மனதில் உள்ளதா? மண் மற்றும் வானிலை தரவுடன் உள்ளிடுங்கள் — மகசூல் எவ்வளவு என்று தெரிவிப்போம்.',
+      step_location: 'இடம்', step_soil: 'மண் மதிப்புகள்', step_result: 'முடிவு',
+      step_crop: 'பயிர் & மண்', step_yield_result: 'மகசூல் அறிக்கை',
+      card_location: 'உங்கள் இடம்',
+      loc_placeholder: 'கிராமம், நகரம் அல்லது மாவட்டம் உள்ளிடுங்கள்…',
+      btn_fetch_weather: '☁️ வானிலை கொண்டுவா',
+      pill_temp: 'வெப்பநிலை', pill_hum: 'ஈரப்பதம்',
+      sec_soil: 'மண் சுகாதார அட்டையிலிருந்து',
+      sec_climate: 'தானாக பெறப்பட்ட வானிலை தரவு',
+      lbl_N: 'நைட்ரஜன் (N)', hint_N: 'மி.கி/கி.கி · 0–140', ph_N: 'எ.கா: 90',
+      lbl_P: 'பாஸ்பரஸ் (P)', hint_P: 'மி.கி/கி.கி · 5–145', ph_P: 'எ.கா: 42',
+      lbl_K: 'பொட்டாசியம் (K)', hint_K: 'மி.கி/கி.கி · 5–205', ph_K: 'எ.கா: 43',
+      lbl_ph: 'மண் pH', hint_ph: '0–14 · பொதுவானது 5.5–8', ph_ph: 'எ.கா: 6.5',
+      lbl_temp: 'வெப்பநிலை (°C)', hint_temp: 'வானிலை API மூலம் தானாக நிரப்பப்படும்', ph_temp: 'இடம் கொண்டுவாருங்கள் ↑',
+      lbl_hum: 'ஈரப்பதம் (%)', hint_hum: 'வானிலை API மூலம் தானாக நிரப்பப்படும்', ph_hum: 'இடம் கொண்டுவாருங்கள் ↑',
+      lbl_rain: 'வருடாந்திர மழையளவு (மி.மீ)', hint_rain: 'உங்கள் பகுதியின் ஆண்டு சராசரியை உள்ளிடுங்கள்', ph_rain: 'எ.கா: 200',
+      btn_predict: '🌱 சிறந்த பயிரை கணிக்கவும்',
+      sec_crop: 'நீங்கள் வளர்க்க விரும்பும் பயிர்',
+      lbl_crop: 'பயிர் பெயர்', hint_crop: 'தட்டச்சு செய்யுங்கள் அல்லது பட்டியலில் இருந்து தேர்வு செய்யுங்கள்', ph_crop: 'எ.கா: அரிசி, மக்காச்சோளம், வாழை…',
+      btn_yield: '🔍 மகசூல் கணிப்பை சரிபாருங்கள்',
+      fert_title: '🧪 உர & மண் திருத்த வழிகாட்டி',
+      fert_good: 'நல்லது', fert_low: 'குறைவு — உரம் இடுங்கள்',
+      fert_excess: 'அதிகம் — உரம் இடாதீர்கள்', fert_high: 'மிக அதிகம் — மண்ணை சரிசெய்யுங்கள்',
+      alert_N: 'தயவுசெய்து நைட்ரஜன் (N) உள்ளிடுங்கள்.', alert_P: 'தயவுசெய்து பாஸ்பரஸ் (P) உள்ளிடுங்கள்.', alert_K: 'தயவுசெய்து பொட்டாசியம் (K) உள்ளிடுங்கள்.', alert_ph: 'தயவுசெய்து மண் pH உள்ளிடுங்கள்.',
+      alert_weather: 'தயவுசெய்து முதலில் வானிலை தரவை கொண்டுவாருங்கள்.',
+      alert_rainfall: 'தயவுசெய்து உங்கள் பகுதியின் வருடாந்திர சராசரி மழையளவை (மி.மீ) உள்ளிடுங்கள்.',
+      alert_crop: 'தயவுசெய்து வளர்க்க விரும்பும் பயிர் பெயரை உள்ளிடுங்கள்.',
+      status_searching: 'இடம் தேடுகிறோம்…', status_not_found: 'இடம் கிடைக்கவில்லை. அருகிலுள்ள நகரம் அல்லது மாவட்டம் முயற்சிக்கவும்.',
+      status_loc_fail: 'இடம் தேட முடியவில்லை.', status_fetching: 'வானிலை கொண்டுவருகிறோம்',
+      status_fetched: '✅ வானிலை கிடைத்தது', status_weather_fail: 'வானிலை கிடைக்கவில்லை. இணையதளம் சரிபாருங்கள்.',
+      loading_analyzing: 'பகுப்பாய்கிறோம்…', loading_checking: 'சரிபார்க்கிறோம்…',
+      lbl_recommended: 'பரிந்துரைக்கப்பட்ட பயிர்', lbl_why: '💡 இந்த பயிர் ஏன்?',
+      lbl_yield_for: 'மகசூல் கணிப்பு', lbl_yield_analysis: '📋 மகசூல் பகுப்பாய்வு',
+      lbl_match: 'உங்கள் நிலைமைகள் எவ்வளவு பொருந்துகின்றன',
+      lbl_best_crop: 'இப்போது உங்கள் வயலுக்கு சிறந்த பயிர்',
+      lbl_your_value: 'உங்கள் மதிப்பு', lbl_ideal_for: 'க்கு ஏற்றது',
+      lbl_calculating: 'கணக்கிடுகிறோம்…',
+      lbl_generating: 'அறிக்கை தயாரிக்கிறோம்',
+      fert_excess_note_tpl: 'அதிகமான {n} பயிரை பாதிக்கும். இந்த சீசனில் நைட்ரஜன் உரங்களை தவிர்க்கவும்.',
+      lbl_dose: 'அளவு', lbl_timing: 'நேரம்', lbl_method: 'முறை',
+      not_in_training: 'பயிற்சி தரவில் இல்லை — பகுப்பாய்வு பொது அறிவை அடிப்படையாக கொண்டது.',
+      unknown_note_pre: '⚠️ "',
+    },
+    Kannada: {
+      langLabel: '🌐 ಭಾಷೆ',
+      tab_predict: '🌱 ಅತ್ಯುತ್ತಮ ಬೆಳೆ ಊಹೆ',
+      tab_yield:   '🔍 ಇಳುವರಿ ವಿಚಾರಣೆ',
+      hero1_h2:    'ನಿಮ್ಮ ಹೊಲಕ್ಕೆ <em>ಸರಿಯಾದ ಬೆಳೆ</em> ಕಂಡುಹಿಡಿಯಿರಿ',
+      hero1_p:     'ನಿಮ್ಮ ಗ್ರಾಮ ಅಥವಾ ಜಿಲ್ಲೆ ಟೈಪ್ ಮಾಡಿ — ಹವಾಮಾನ ಮಾಹಿತಿ ಸ್ವಯಂಚಾಲಿತವಾಗಿ ತರುತ್ತೇವೆ. ಮಣ್ಣಿನ ಮೌಲ್ಯಗಳನ್ನು ನಮೂದಿಸಿ ನಿಮ್ಮ ಭಾಷೆಯಲ್ಲಿ ಶಿಫಾರಸು ಪಡೆಯಿರಿ.',
+      hero2_h2:    'ನಿಮ್ಮ <em>ಆಯ್ದ ಬೆಳೆಯ</em> ಇಳುವರಿ ಪರಿಶೀಲಿಸಿ',
+      hero2_p:     'ಮೊದಲೇ ಬೆಳೆ ಮನಸ್ಸಿನಲ್ಲಿ ಇದೆಯೇ? ಮಣ್ಣು ಮತ್ತು ಹವಾಮಾನ ಮಾಹಿತಿಯೊಂದಿಗೆ ನಮೂದಿಸಿ — ಇಳುವರಿ ಎಷ್ಟು ಎಂದು ತಿಳಿಸುತ್ತೇವೆ.',
+      step_location: 'ಸ್ಥಳ', step_soil: 'ಮಣ್ಣಿನ ಮೌಲ್ಯಗಳು', step_result: 'ಫಲಿತಾಂಶ',
+      step_crop: 'ಬೆಳೆ & ಮಣ್ಣು', step_yield_result: 'ಇಳುವರಿ ವರದಿ',
+      card_location: 'ನಿಮ್ಮ ಸ್ಥಳ',
+      loc_placeholder: 'ಗ್ರಾಮ, ಪಟ್ಟಣ ಅಥವಾ ಜಿಲ್ಲೆ ಟೈಪ್ ಮಾಡಿ…',
+      btn_fetch_weather: '☁️ ಹವಾಮಾನ ತರಿ',
+      pill_temp: 'ತಾಪಮಾನ', pill_hum: 'ಆರ್ದ್ರತೆ',
+      sec_soil: 'ಮಣ್ಣಿನ ಆರೋಗ್ಯ ಕಾರ್ಡ್‌ನಿಂದ',
+      sec_climate: 'ಸ್ವಯಂಚಾಲಿತ ಹವಾಮಾನ ಮಾಹಿತಿ',
+      lbl_N: 'ಸಾರಜನಕ (N)', hint_N: 'ಮಿ.ಗ್ರಾ/ಕಿ.ಗ್ರಾ · 0–140', ph_N: 'ಉದಾ: 90',
+      lbl_P: 'ರಂಜಕ (P)', hint_P: 'ಮಿ.ಗ್ರಾ/ಕಿ.ಗ್ರಾ · 5–145', ph_P: 'ಉದಾ: 42',
+      lbl_K: 'ಪೊಟ್ಯಾಸಿಯಂ (K)', hint_K: 'ಮಿ.ಗ್ರಾ/ಕಿ.ಗ್ರಾ · 5–205', ph_K: 'ಉದಾ: 43',
+      lbl_ph: 'ಮಣ್ಣಿನ pH', hint_ph: '0–14 · ಸಾಮಾನ್ಯ 5.5–8', ph_ph: 'ಉದಾ: 6.5',
+      lbl_temp: 'ತಾಪಮಾನ (°C)', hint_temp: 'ಹವಾಮಾನ API ನಿಂದ ಸ್ವಯಂ ತುಂಬಿಸಲಾಗುತ್ತದೆ', ph_temp: 'ಸ್ಥಳ ತರಿ ↑',
+      lbl_hum: 'ಆರ್ದ್ರತೆ (%)', hint_hum: 'ಹವಾಮಾನ API ನಿಂದ ಸ್ವಯಂ ತುಂಬಿಸಲಾಗುತ್ತದೆ', ph_hum: 'ಸ್ಥಳ ತರಿ ↑',
+      lbl_rain: 'ವಾರ್ಷಿಕ ಮಳೆ (ಮಿ.ಮೀ)', hint_rain: 'ನಿಮ್ಮ ಪ್ರದೇಶದ ವಾರ್ಷಿಕ ಸರಾಸರಿ ನಮೂದಿಸಿ', ph_rain: 'ಉದಾ: 200',
+      btn_predict: '🌱 ಅತ್ಯುತ್ತಮ ಬೆಳೆ ಊಹಿಸಿ',
+      sec_crop: 'ನೀವು ಬೆಳೆಯಲು ಬಯಸುವ ಬೆಳೆ',
+      lbl_crop: 'ಬೆಳೆಯ ಹೆಸರು', hint_crop: 'ಟೈಪ್ ಮಾಡಿ ಅಥವಾ ಪಟ್ಟಿಯಿಂದ ಆರಿಸಿ', ph_crop: 'ಉದಾ: ಭತ್ತ, ಜೋಳ, ಬಾಳೆ…',
+      btn_yield: '🔍 ಇಳುವರಿ ಅಂದಾಜು ಪರಿಶೀಲಿಸಿ',
+      fert_title: '🧪 ಗೊಬ್ಬರ & ಮಣ್ಣು ತಿದ್ದುಪಡಿ ಮಾರ್ಗದರ್ಶಿ',
+      fert_good: 'ಉತ್ತಮ', fert_low: 'ಕಡಿಮೆ — ಗೊಬ್ಬರ ಹಾಕಿ',
+      fert_excess: 'ಹೆಚ್ಚು — ಗೊಬ್ಬರ ಬೇಡ', fert_high: 'ತುಂಬಾ ಹೆಚ್ಚು — ಮಣ್ಣು ಸರಿಪಡಿಸಿ',
+      alert_N: 'ದಯವಿಟ್ಟು ಸಾರಜನಕ (N) ನಮೂದಿಸಿ.', alert_P: 'ದಯವಿಟ್ಟು ರಂಜಕ (P) ನಮೂದಿಸಿ.', alert_K: 'ದಯವಿಟ್ಟು ಪೊಟ್ಯಾಸಿಯಂ (K) ನಮೂದಿಸಿ.', alert_ph: 'ದಯವಿಟ್ಟು ಮಣ್ಣಿನ pH ನಮೂದಿಸಿ.',
+      alert_weather: 'ದಯವಿಟ್ಟು ಮೊದಲು ಹವಾಮಾನ ಮಾಹಿತಿ ತರಿ.',
+      alert_rainfall: 'ದಯವಿಟ್ಟು ನಿಮ್ಮ ಪ್ರದೇಶದ ವಾರ್ಷಿಕ ಸರಾಸರಿ ಮಳೆ (ಮಿ.ಮೀ) ನಮೂದಿಸಿ.',
+      alert_crop: 'ದಯವಿಟ್ಟು ಬೆಳೆಯಲು ಬಯಸುವ ಬೆಳೆಯ ಹೆಸರು ನಮೂದಿಸಿ.',
+      status_searching: 'ಸ್ಥಳ ಹುಡುಕಲಾಗುತ್ತಿದೆ…', status_not_found: 'ಸ್ಥಳ ಸಿಗಲಿಲ್ಲ. ಹತ್ತಿರದ ಪಟ್ಟಣ ಅಥವಾ ಜಿಲ್ಲೆ ಪ್ರಯತ್ನಿಸಿ.',
+      status_loc_fail: 'ಸ್ಥಳ ಹುಡುಕಲು ಆಗಲಿಲ್ಲ.', status_fetching: 'ಹವಾಮಾನ ತರಲಾಗುತ್ತಿದೆ',
+      status_fetched: '✅ ಹವಾಮಾನ ಸಿಕ್ಕಿತು', status_weather_fail: 'ಹವಾಮಾನ ಸಿಗಲಿಲ್ಲ. ಇಂಟರ್ನೆಟ್ ಪರೀಕ್ಷಿಸಿ.',
+      loading_analyzing: 'ವಿಶ್ಲೇಷಿಸಲಾಗುತ್ತಿದೆ…', loading_checking: 'ಪರಿಶೀಲಿಸಲಾಗುತ್ತಿದೆ…',
+      lbl_recommended: 'ಶಿಫಾರಸು ಮಾಡಿದ ಬೆಳೆ', lbl_why: '💡 ಈ ಬೆಳೆ ಏಕೆ?',
+      lbl_yield_for: 'ಇಳುವರಿ ನಿರೀಕ್ಷೆ', lbl_yield_analysis: '📋 ಇಳುವರಿ ವಿಶ್ಲೇಷಣೆ',
+      lbl_match: 'ನಿಮ್ಮ ಪರಿಸ್ಥಿತಿಗಳು ಎಷ್ಟು ಹೊಂದುತ್ತವೆ',
+      lbl_best_crop: 'ಈಗ ನಿಮ್ಮ ಹೊಲಕ್ಕೆ ಉತ್ತಮ ಬೆಳೆ',
+      lbl_your_value: 'ನಿಮ್ಮ ಮೌಲ್ಯ', lbl_ideal_for: 'ಗೆ ಸೂಕ್ತ',
+      lbl_calculating: 'ಲೆಕ್ಕ ಮಾಡಲಾಗುತ್ತಿದೆ…',
+      lbl_generating: 'ವರದಿ ತಯಾರಾಗುತ್ತಿದೆ',
+      fert_excess_note_tpl: 'ಹೆಚ್ಚು {n} ಬೆಳೆಗೆ ಹಾನಿಕಾರಕ. ಈ ಋತುವಿನಲ್ಲಿ ಸಾರಜನಕ ಗೊಬ್ಬರ ಹಾಕಬೇಡಿ.',
+      lbl_dose: 'ಪ್ರಮಾಣ', lbl_timing: 'ಸಮಯ', lbl_method: 'ವಿಧಾನ',
+      not_in_training: 'ತರಬೇತಿ ಡೇಟಾದಲ್ಲಿ ಇಲ್ಲ — ವಿಶ್ಲೇಷಣೆ ಸಾಮಾನ್ಯ ಜ್ಞಾನ ಆಧರಿಸಿದೆ.',
+      unknown_note_pre: '⚠️ "',
+    },
+    Marathi: {
+      langLabel: '🌐 भाषा',
+      tab_predict: '🌱 सर्वोत्तम पीक अंदाज',
+      tab_yield:   '🔍 उत्पादन चौकशी',
+      hero1_h2:    'तुमच्या शेतासाठी <em>योग्य पीक</em> शोधा',
+      hero1_p:     'तुमचे गाव किंवा जिल्हा टाइप करा — हवामान डेटा आपोआप आणू. मातीची मूल्ये प्रविष्ट करा आणि तुमच्या भाषेत शिफारस मिळवा.',
+      hero2_h2:    'तुमच्या <em>निवडलेल्या पिकाचे</em> उत्पादन तपासा',
+      hero2_p:     'आधीच पीक मनात आहे का? माती आणि हवामान डेटासह प्रविष्ट करा — उत्पादन किती होईल ते सांगू.',
+      step_location: 'स्थान', step_soil: 'मातीची मूल्ये', step_result: 'निकाल',
+      step_crop: 'पीक आणि माती', step_yield_result: 'उत्पादन अहवाल',
+      card_location: 'तुमचे स्थान',
+      loc_placeholder: 'गाव, शहर किंवा जिल्हा टाइप करा…',
+      btn_fetch_weather: '☁️ हवामान आणा',
+      pill_temp: 'तापमान', pill_hum: 'आर्द्रता',
+      sec_soil: 'माती आरोग्य कार्डातून',
+      sec_climate: 'आपोआप मिळवलेला हवामान डेटा',
+      lbl_N: 'नायट्रोजन (N)', hint_N: 'मिग्रा/किग्रा · 0–140', ph_N: 'उदा: 90',
+      lbl_P: 'फॉस्फरस (P)', hint_P: 'मिग्रा/किग्रा · 5–145', ph_P: 'उदा: 42',
+      lbl_K: 'पोटॅशियम (K)', hint_K: 'मिग्रा/किग्रा · 5–205', ph_K: 'उदा: 43',
+      lbl_ph: 'माती pH', hint_ph: '0–14 · सामान्य 5.5–8', ph_ph: 'उदा: 6.5',
+      lbl_temp: 'तापमान (°C)', hint_temp: 'हवामान API कडून आपोआप भरले', ph_temp: 'स्थान आणा ↑',
+      lbl_hum: 'आर्द्रता (%)', hint_hum: 'हवामान API कडून आपोआप भरले', ph_hum: 'स्थान आणा ↑',
+      lbl_rain: 'वार्षिक पाऊस (मिमी)', hint_rain: 'तुमच्या प्रदेशाचे वार्षिक सरासरी प्रविष्ट करा', ph_rain: 'उदा: 200',
+      btn_predict: '🌱 सर्वोत्तम पीक सुचवा',
+      sec_crop: 'तुम्हाला उगवायचे असलेले पीक',
+      lbl_crop: 'पिकाचे नाव', hint_crop: 'टाइप करा किंवा यादीतून निवडा', ph_crop: 'उदा: तांदूळ, मका, केळ…',
+      btn_yield: '🔍 उत्पादन दृष्टिकोन तपासा',
+      fert_title: '🧪 खत आणि माती सुधारणा मार्गदर्शिका',
+      fert_good: 'चांगले', fert_low: 'कमी — खत लावा',
+      fert_excess: 'जास्त — खत देऊ नका', fert_high: 'खूप जास्त — माती सुधारा',
+      alert_N: 'कृपया नायट्रोजन (N) प्रविष्ट करा.', alert_P: 'कृपया फॉस्फरस (P) प्रविष्ट करा.', alert_K: 'कृपया पोटॅशियम (K) प्रविष्ट करा.', alert_ph: 'कृपया माती pH प्रविष्ट करा.',
+      alert_weather: 'कृपया आधी हवामान डेटा आणा.',
+      alert_rainfall: 'कृपया तुमच्या क्षेत्राचा वार्षिक सरासरी पाऊस (मिमी) प्रविष्ट करा.',
+      alert_crop: 'कृपया उगवायच्या पिकाचे नाव प्रविष्ट करा.',
+      status_searching: 'स्थान शोधत आहे…', status_not_found: 'स्थान सापडले नाही. जवळचे शहर किंवा जिल्हा वापरा.',
+      status_loc_fail: 'स्थान शोधता आले नाही.', status_fetching: 'हवामान आणत आहे',
+      status_fetched: '✅ हवामान मिळाले', status_weather_fail: 'हवामान आले नाही. इंटरनेट तपासा.',
+      loading_analyzing: 'विश्लेषण करत आहे…', loading_checking: 'तपासत आहे…',
+      lbl_recommended: 'शिफारस केलेले पीक', lbl_why: '💡 हे पीक का?',
+      lbl_yield_for: 'उत्पादन दृष्टिकोन', lbl_yield_analysis: '📋 उत्पादन विश्लेषण',
+      lbl_match: 'तुमच्या परिस्थिती किती जुळतात',
+      lbl_best_crop: 'सध्या तुमच्या शेतासाठी सर्वोत्तम पीक',
+      lbl_your_value: 'तुमचे मूल्य', lbl_ideal_for: 'साठी आदर्श',
+      lbl_calculating: 'मोजत आहे…',
+      lbl_generating: 'अहवाल तयार होत आहे',
+      fert_excess_note_tpl: 'जास्त {n} पिकाला हानी पोहोचवू शकते. या हंगामात नायट्रोजनयुक्त खत टाळा.',
+      lbl_dose: 'मात्रा', lbl_timing: 'वेळ', lbl_method: 'पद्धत',
+      not_in_training: 'प्रशिक्षण डेटामध्ये नाही — विश्लेषण सामान्य ज्ञानावर आधारित आहे.',
+      unknown_note_pre: '⚠️ "',
+    },
+    Bengali: {
+      langLabel: '🌐 ভাষা',
+      tab_predict: '🌱 সেরা ফসল পূর্বাভাস',
+      tab_yield:   '🔍 ফলন অনুসন্ধান',
+      hero1_h2:    'আপনার মাঠের জন্য <em>সঠিক ফসল</em> খুঁজুন',
+      hero1_p:     'আপনার গ্রাম বা জেলা টাইপ করুন — আবহাওয়ার তথ্য স্বয়ংক্রিয়ভাবে আনব। মাটির মান প্রবেশ করুন এবং আপনার ভাষায় সুপারিশ পান।',
+      hero2_h2:    'আপনার <em>বেছে নেওয়া ফসলের</em> ফলন পরীক্ষা করুন',
+      hero2_p:     'ইতিমধ্যে ফসল মাথায় আছে? মাটি ও আবহাওয়ার তথ্য দিয়ে প্রবেশ করুন — ফলন কেমন হবে জানাব।',
+      step_location: 'অবস্থান', step_soil: 'মাটির মান', step_result: 'ফলাফল',
+      step_crop: 'ফসল ও মাটি', step_yield_result: 'ফলন রিপোর্ট',
+      card_location: 'আপনার অবস্থান',
+      loc_placeholder: 'গ্রাম, শহর বা জেলা টাইপ করুন…',
+      btn_fetch_weather: '☁️ আবহাওয়া আনুন',
+      pill_temp: 'তাপমাত্রা', pill_hum: 'আর্দ্রতা',
+      sec_soil: 'মাটি স্বাস্থ্য কার্ড থেকে',
+      sec_climate: 'স্বয়ংক্রিয়ভাবে প্রাপ্ত আবহাওয়া তথ্য',
+      lbl_N: 'নাইট্রোজেন (N)', hint_N: 'মিগ্রা/কিগ্রা · 0–140', ph_N: 'যেমন: 90',
+      lbl_P: 'ফসফরাস (P)', hint_P: 'মিগ্রা/কিগ্রা · 5–145', ph_P: 'যেমন: 42',
+      lbl_K: 'পটাশিয়াম (K)', hint_K: 'মিগ্রা/কিগ্রা · 5–205', ph_K: 'যেমন: 43',
+      lbl_ph: 'মাটির pH', hint_ph: '0–14 · সাধারণ 5.5–8', ph_ph: 'যেমন: 6.5',
+      lbl_temp: 'তাপমাত্রা (°C)', hint_temp: 'আবহাওয়া API থেকে স্বয়ংক্রিয়', ph_temp: 'অবস্থান আনুন ↑',
+      lbl_hum: 'আর্দ্রতা (%)', hint_hum: 'আবহাওয়া API থেকে স্বয়ংক্রিয়', ph_hum: 'অবস্থান আনুন ↑',
+      lbl_rain: 'বার্ষিক বৃষ্টিপাত (মিমি)', hint_rain: 'আপনার অঞ্চলের বার্ষিক গড় প্রবেশ করুন', ph_rain: 'যেমন: 200',
+      btn_predict: '🌱 সেরা ফসলের পূর্বাভাস দিন',
+      sec_crop: 'আপনি যে ফসল চাষ করতে চান',
+      lbl_crop: 'ফসলের নাম', hint_crop: 'টাইপ করুন বা তালিকা থেকে বেছে নিন', ph_crop: 'যেমন: ধান, ভুট্টা, কলা…',
+      btn_yield: '🔍 ফলনের পূর্বাভাস পরীক্ষা করুন',
+      fert_title: '🧪 সার ও মাটি সংশোধন নির্দেশিকা',
+      fert_good: 'ভালো', fert_low: 'কম — সার দিন',
+      fert_excess: 'বেশি — সার দেবেন না', fert_high: 'অনেক বেশি — মাটি সংশোধন করুন',
+      alert_N: 'অনুগ্রহ করে নাইট্রোজেন (N) লিখুন।', alert_P: 'অনুগ্রহ করে ফসফরাস (P) লিখুন।', alert_K: 'অনুগ্রহ করে পটাশিয়াম (K) লিখুন।', alert_ph: 'অনুগ্রহ করে মাটির pH লিখুন।',
+      alert_weather: 'অনুগ্রহ করে আগে আবহাওয়া তথ্য আনুন।',
+      alert_rainfall: 'অনুগ্রহ করে আপনার অঞ্চলের বার্ষিক গড় বৃষ্টিপাত (মিমি) লিখুন।',
+      alert_crop: 'অনুগ্রহ করে চাষ করতে চাওয়া ফসলের নাম লিখুন।',
+      status_searching: 'অবস্থান খোঁজা হচ্ছে…', status_not_found: 'অবস্থান পাওয়া যায়নি। কাছের শহর বা জেলা চেষ্টা করুন।',
+      status_loc_fail: 'অবস্থান খুঁজতে পারিনি।', status_fetching: 'আবহাওয়া আনা হচ্ছে',
+      status_fetched: '✅ আবহাওয়া পাওয়া গেছে', status_weather_fail: 'আবহাওয়া আনা যায়নি। ইন্টারনেট দেখুন।',
+      loading_analyzing: 'বিশ্লেষণ হচ্ছে…', loading_checking: 'যাচাই হচ্ছে…',
+      lbl_recommended: 'প্রস্তাবিত ফসল', lbl_why: '💡 এই ফসল কেন?',
+      lbl_yield_for: 'ফলন পূর্বাভাস', lbl_yield_analysis: '📋 ফলন বিশ্লেষণ',
+      lbl_match: 'আপনার পরিস্থিতি কতটা মেলে',
+      lbl_best_crop: 'এখন আপনার মাঠের জন্য সেরা ফসল',
+      lbl_your_value: 'আপনার মান', lbl_ideal_for: 'এর জন্য আদর্শ',
+      lbl_calculating: 'গণনা হচ্ছে…',
+      lbl_generating: 'প্রতিবেদন তৈরি হচ্ছে',
+      fert_excess_note_tpl: 'অতিরিক্ত {n} ফসলের ক্ষতি করতে পারে। এই মৌসুমে নাইট্রোজেন সার এড়িয়ে চলুন।',
+      lbl_dose: 'মাত্রা', lbl_timing: 'সময়', lbl_method: 'পদ্ধতি',
+      not_in_training: 'প্রশিক্ষণ ডেটায় নেই — বিশ্লেষণ সাধারণ জ্ঞানের উপর ভিত্তি করে।',
+      unknown_note_pre: '⚠️ "',
+    },
+    Punjabi: {
+      langLabel: '🌐 ਭਾਸ਼ਾ',
+      tab_predict: '🌱 ਸਭ ਤੋਂ ਵਧੀਆ ਫਸਲ ਅਨੁਮਾਨ',
+      tab_yield:   '🔍 ਝਾੜ ਪੁੱਛਗਿੱਛ',
+      hero1_h2:    'ਆਪਣੇ ਖੇਤ ਲਈ <em>ਸਹੀ ਫਸਲ</em> ਲੱਭੋ',
+      hero1_p:     'ਆਪਣਾ ਪਿੰਡ ਜਾਂ ਜ਼ਿਲ੍ਹਾ ਟਾਈਪ ਕਰੋ — ਅਸੀਂ ਮੌਸਮ ਦਾ ਡੇਟਾ ਆਪਣੇ ਆਪ ਲਿਆਵਾਂਗੇ। ਮਿੱਟੀ ਦੀਆਂ ਕੀਮਤਾਂ ਦਰਜ ਕਰੋ ਅਤੇ ਆਪਣੀ ਭਾਸ਼ਾ ਵਿੱਚ ਸਿਫਾਰਸ਼ ਪ੍ਰਾਪਤ ਕਰੋ।',
+      hero2_h2:    'ਆਪਣੀ <em>ਚੁਣੀ ਹੋਈ ਫਸਲ</em> ਦਾ ਝਾੜ ਜਾਂਚੋ',
+      hero2_p:     'ਕੀ ਪਹਿਲਾਂ ਤੋਂ ਫਸਲ ਮਨ ਵਿੱਚ ਹੈ? ਮਿੱਟੀ ਅਤੇ ਮੌਸਮ ਡੇਟਾ ਨਾਲ ਦਰਜ ਕਰੋ — ਅਸੀਂ ਦੱਸਾਂਗੇ ਕਿ ਝਾੜ ਕਿੰਨਾ ਹੋਵੇਗਾ।',
+      step_location: 'ਸਥਾਨ', step_soil: 'ਮਿੱਟੀ ਦੀਆਂ ਕੀਮਤਾਂ', step_result: 'ਨਤੀਜਾ',
+      step_crop: 'ਫਸਲ ਅਤੇ ਮਿੱਟੀ', step_yield_result: 'ਝਾੜ ਰਿਪੋਰਟ',
+      card_location: 'ਤੁਹਾਡਾ ਸਥਾਨ',
+      loc_placeholder: 'ਪਿੰਡ, ਸ਼ਹਿਰ ਜਾਂ ਜ਼ਿਲ੍ਹਾ ਟਾਈਪ ਕਰੋ…',
+      btn_fetch_weather: '☁️ ਮੌਸਮ ਲਿਆਓ',
+      pill_temp: 'ਤਾਪਮਾਨ', pill_hum: 'ਨਮੀ',
+      sec_soil: 'ਮਿੱਟੀ ਸਿਹਤ ਕਾਰਡ ਤੋਂ',
+      sec_climate: 'ਆਪਣੇ ਆਪ ਪ੍ਰਾਪਤ ਮੌਸਮ ਡੇਟਾ',
+      lbl_N: 'ਨਾਈਟ੍ਰੋਜਨ (N)', hint_N: 'ਮਿਗ੍ਰਾ/ਕਿਗ੍ਰਾ · 0–140', ph_N: 'ਜਿਵੇਂ: 90',
+      lbl_P: 'ਫਾਸਫੋਰਸ (P)', hint_P: 'ਮਿਗ੍ਰਾ/ਕਿਗ੍ਰਾ · 5–145', ph_P: 'ਜਿਵੇਂ: 42',
+      lbl_K: 'ਪੋਟਾਸ਼ੀਅਮ (K)', hint_K: 'ਮਿਗ੍ਰਾ/ਕਿਗ੍ਰਾ · 5–205', ph_K: 'ਜਿਵੇਂ: 43',
+      lbl_ph: 'ਮਿੱਟੀ pH', hint_ph: '0–14 · ਸਾਧਾਰਨ 5.5–8', ph_ph: 'ਜਿਵੇਂ: 6.5',
+      lbl_temp: 'ਤਾਪਮਾਨ (°C)', hint_temp: 'ਮੌਸਮ API ਤੋਂ ਆਪਣੇ ਆਪ ਭਰਿਆ', ph_temp: 'ਸਥਾਨ ਲਿਆਓ ↑',
+      lbl_hum: 'ਨਮੀ (%)', hint_hum: 'ਮੌਸਮ API ਤੋਂ ਆਪਣੇ ਆਪ ਭਰਿਆ', ph_hum: 'ਸਥਾਨ ਲਿਆਓ ↑',
+      lbl_rain: 'ਸਾਲਾਨਾ ਬਾਰਸ਼ (ਮਿਮੀ)', hint_rain: 'ਆਪਣੇ ਖੇਤਰ ਦੀ ਸਾਲਾਨਾ ਔਸਤ ਦਰਜ ਕਰੋ', ph_rain: 'ਜਿਵੇਂ: 200',
+      btn_predict: '🌱 ਸਭ ਤੋਂ ਵਧੀਆ ਫਸਲ ਅੰਦਾਜ਼ਾ ਲਗਾਓ',
+      sec_crop: 'ਜੋ ਫਸਲ ਤੁਸੀਂ ਉਗਾਉਣਾ ਚਾਹੁੰਦੇ ਹੋ',
+      lbl_crop: 'ਫਸਲ ਦਾ ਨਾਮ', hint_crop: 'ਟਾਈਪ ਕਰੋ ਜਾਂ ਸੂਚੀ ਤੋਂ ਚੁਣੋ', ph_crop: 'ਜਿਵੇਂ: ਚੌਲ, ਮੱਕੀ, ਕੇਲਾ…',
+      btn_yield: '🔍 ਝਾੜ ਅਨੁਮਾਨ ਜਾਂਚੋ',
+      fert_title: '🧪 ਖਾਦ ਅਤੇ ਮਿੱਟੀ ਸੁਧਾਰ ਮਾਰਗਦਰਸ਼ਿਕਾ',
+      fert_good: 'ਚੰਗਾ', fert_low: 'ਘੱਟ — ਖਾਦ ਪਾਓ',
+      fert_excess: 'ਜ਼ਿਆਦਾ — ਖਾਦ ਨਾ ਪਾਓ', fert_high: 'ਬਹੁਤ ਜ਼ਿਆਦਾ — ਮਿੱਟੀ ਸੁਧਾਰੋ',
+      alert_N: 'ਕਿਰਪਾ ਕਰਕੇ ਨਾਈਟ੍ਰੋਜਨ (N) ਦਰਜ ਕਰੋ।', alert_P: 'ਕਿਰਪਾ ਕਰਕੇ ਫਾਸਫੋਰਸ (P) ਦਰਜ ਕਰੋ।', alert_K: 'ਕਿਰਪਾ ਕਰਕੇ ਪੋਟਾਸ਼ੀਅਮ (K) ਦਰਜ ਕਰੋ।', alert_ph: 'ਕਿਰਪਾ ਕਰਕੇ ਮਿੱਟੀ pH ਦਰਜ ਕਰੋ।',
+      alert_weather: 'ਕਿਰਪਾ ਕਰਕੇ ਪਹਿਲਾਂ ਮੌਸਮ ਡੇਟਾ ਲਿਆਓ।',
+      alert_rainfall: 'ਕਿਰਪਾ ਕਰਕੇ ਆਪਣੇ ਖੇਤਰ ਦੀ ਸਾਲਾਨਾ ਔਸਤ ਬਾਰਸ਼ (ਮਿਮੀ) ਦਰਜ ਕਰੋ।',
+      alert_crop: 'ਕਿਰਪਾ ਕਰਕੇ ਉਗਾਉਣ ਵਾਲੀ ਫਸਲ ਦਾ ਨਾਮ ਦਰਜ ਕਰੋ।',
+      status_searching: 'ਸਥਾਨ ਲੱਭਿਆ ਜਾ ਰਿਹਾ ਹੈ…', status_not_found: 'ਸਥਾਨ ਨਹੀਂ ਮਿਲਿਆ। ਨੇੜੇ ਦਾ ਕਸਬਾ ਜਾਂ ਜ਼ਿਲ੍ਹਾ ਵਰਤੋ।',
+      status_loc_fail: 'ਸਥਾਨ ਨਹੀਂ ਲੱਭ ਸਕੇ।', status_fetching: 'ਮੌਸਮ ਲਿਆਂਦਾ ਜਾ ਰਿਹਾ ਹੈ',
+      status_fetched: '✅ ਮੌਸਮ ਮਿਲਿਆ', status_weather_fail: 'ਮੌਸਮ ਨਹੀਂ ਆਇਆ। ਇੰਟਰਨੈੱਟ ਜਾਂਚੋ।',
+      loading_analyzing: 'ਵਿਸ਼ਲੇਸ਼ਣ ਹੋ ਰਿਹਾ ਹੈ…', loading_checking: 'ਜਾਂਚਿਆ ਜਾ ਰਿਹਾ ਹੈ…',
+      lbl_recommended: 'ਸਿਫਾਰਸ਼ ਕੀਤੀ ਫਸਲ', lbl_why: '💡 ਇਹ ਫਸਲ ਕਿਉਂ?',
+      lbl_yield_for: 'ਝਾੜ ਦਾ ਅਨੁਮਾਨ', lbl_yield_analysis: '📋 ਝਾੜ ਵਿਸ਼ਲੇਸ਼ਣ',
+      lbl_match: 'ਤੁਹਾਡੀਆਂ ਹਾਲਤਾਂ ਕਿੰਨੀਆਂ ਮੇਲ ਖਾਂਦੀਆਂ ਹਨ',
+      lbl_best_crop: 'ਹੁਣ ਤੁਹਾਡੇ ਖੇਤ ਲਈ ਸਭ ਤੋਂ ਵਧੀਆ ਫਸਲ',
+      lbl_your_value: 'ਤੁਹਾਡਾ ਮੁੱਲ', lbl_ideal_for: 'ਲਈ ਆਦਰਸ਼',
+      lbl_calculating: 'ਗਿਣਿਆ ਜਾ ਰਿਹਾ ਹੈ…',
+      lbl_generating: 'ਰਿਪੋਰਟ ਤਿਆਰ ਹੋ ਰਹੀ ਹੈ',
+      fert_excess_note_tpl: 'ਜ਼ਿਆਦਾ {n} ਫਸਲ ਨੂੰ ਨੁਕਸਾਨ ਕਰ ਸਕਦਾ ਹੈ। ਇਸ ਮੌਸਮ ਵਿੱਚ ਨਾਈਟ੍ਰੋਜਨ ਖਾਦ ਤੋਂ ਬਚੋ।',
+      lbl_dose: 'ਮਾਤਰਾ', lbl_timing: 'ਸਮਾਂ', lbl_method: 'ਤਰੀਕਾ',
+      not_in_training: 'ਸਿਖਲਾਈ ਡੇਟਾ ਵਿੱਚ ਨਹੀਂ — ਵਿਸ਼ਲੇਸ਼ਣ ਆਮ ਜਾਣਕਾਰੀ ਉੱਤੇ ਅਧਾਰਤ।',
+      unknown_note_pre: '⚠️ "',
+    },
+    Gujarati: {
+      langLabel: '🌐 ભાષા',
+      tab_predict: '🌱 શ્રેષ્ઠ પાક અનુમાન',
+      tab_yield:   '🔍 ઉત્પાદન પૂછ',
+      hero1_h2:    'તમારા ખેત માટે <em>યોગ્ય પાક</em> શોધો',
+      hero1_p:     'તમારું ગામ અથવા જિલ્લો ટાઇપ કરો — હવામાન ડેટા આપોઆપ લઈ આવીશું. જમીનની કિંમતો દાખલ કરો અને તમારી ભાષામાં ભલામણ મેળવો.',
+      hero2_h2:    'તમારા <em>પસંદ કરેલ પાકનું</em> ઉત્પાદન ચકાસો',
+      hero2_p:     'પહેલેથી પાક મનમાં છે? જમીન અને હવામાન ડેટા સાથે દાખલ કરો — ઉત્પાદન કેટલું હશે તે જણાવીશું.',
+      step_location: 'સ્થળ', step_soil: 'જમીનની કિંમતો', step_result: 'પરિણામ',
+      step_crop: 'પાક અને જમીન', step_yield_result: 'ઉત્પાદન અહેવાલ',
+      card_location: 'તમારું સ્થળ',
+      loc_placeholder: 'ગામ, શહેર અથવા જિલ્લો ટાઇપ કરો…',
+      btn_fetch_weather: '☁️ હવામાન લાવો',
+      pill_temp: 'તાપમાન', pill_hum: 'ભેજ',
+      sec_soil: 'જમીન આરોગ્ય કાર્ડ માંથી',
+      sec_climate: 'આપોઆપ મળેલ હવામાન ડેટા',
+      lbl_N: 'નાઇટ્રોજન (N)', hint_N: 'મિ.ગ્રા/કિ.ગ્રા · 0–140', ph_N: 'ઉ.દા: 90',
+      lbl_P: 'ફોસ્ફરસ (P)', hint_P: 'મિ.ગ્રા/કિ.ગ્રા · 5–145', ph_P: 'ઉ.દા: 42',
+      lbl_K: 'પોટેશિયમ (K)', hint_K: 'મિ.ગ્રા/કિ.ગ્રા · 5–205', ph_K: 'ઉ.દા: 43',
+      lbl_ph: 'જમીન pH', hint_ph: '0–14 · સામાન્ય 5.5–8', ph_ph: 'ઉ.દા: 6.5',
+      lbl_temp: 'તાપમાન (°C)', hint_temp: 'હવામાન API થી આપોઆપ ભરેલ', ph_temp: 'સ્થળ લાવો ↑',
+      lbl_hum: 'ભેજ (%)', hint_hum: 'હવામાન API થી આપોઆપ ભરેલ', ph_hum: 'સ્થળ લાવો ↑',
+      lbl_rain: 'વાર્ષિક વરસાદ (મિ.મી)', hint_rain: 'તમારા વિસ્તારનો વાર્ષિક સરેરાશ દાખલ કરો', ph_rain: 'ઉ.દા: 200',
+      btn_predict: '🌱 શ્રેષ્ઠ પાક સૂચવો',
+      sec_crop: 'તમે ઉગાડવા ઇચ્છો છો તે પાક',
+      lbl_crop: 'પાકનું નામ', hint_crop: 'ટાઇપ કરો અથવા સૂચિ માંથી પસંદ કરો', ph_crop: 'ઉ.દા: ડાંગર, મકાઈ, કેળ…',
+      btn_yield: '🔍 ઉત્પાદન અનુમાન ચકાસો',
+      fert_title: '🧪 ખાતર અને જમીન સુધારણા માર્ગદર્શિકા',
+      fert_good: 'સારું', fert_low: 'ઓછું — ખાતર નાખો',
+      fert_excess: 'વધારે — ખાતર ન નાખો', fert_high: 'ખૂબ વધારે — જમીન સુધારો',
+      alert_N: 'કૃપા કરી નાઇટ્રોજન (N) દાખલ કરો.', alert_P: 'કૃપા કરી ફોસ્ફરસ (P) દાખલ કરો.', alert_K: 'કૃપા કરી પોટેશિયમ (K) દાખલ કરો.', alert_ph: 'કૃપા કરી જમીન pH દાખલ કરો.',
+      alert_weather: 'કૃપા કરી પહેલા હવામાન ડેટા લઈ આવો.',
+      alert_rainfall: 'કૃપા કરી તમારા વિસ્તારનો વાર્ષિક સરેરાશ વરસાદ (મિ.મી) દાખલ કરો.',
+      alert_crop: 'કૃપા કરી ઉગાડવા ઇચ્છો તે પાકનું નામ દાખલ કરો.',
+      status_searching: 'સ્થળ શોધાઈ રહ્યું છે…', status_not_found: 'સ્થળ મળ્યું નહીં. નજીકનું શહેર અથવા જિલ્લો વાપરો.',
+      status_loc_fail: 'સ્થળ શોધી શકાયું નહીં.', status_fetching: 'હવામાન લઈ આવાય છે',
+      status_fetched: '✅ હવામાન મળ્યું', status_weather_fail: 'હવામાન ન આવ્યું. ઇન્ટરનેટ ચેક કરો.',
+      loading_analyzing: 'વિશ્લેષણ થઈ રહ્યું છે…', loading_checking: 'ચકાસાઈ રહ્યું છે…',
+      lbl_recommended: 'ભલામણ કરેલ પાક', lbl_why: '💡 આ પાક શા માટે?',
+      lbl_yield_for: 'ઉત્પાદન અનુમાન', lbl_yield_analysis: '📋 ઉત્પાદન વિશ્લેષણ',
+      lbl_match: 'તમારી પરિસ્થિતિ કેટલી મળે છે',
+      lbl_best_crop: 'હવે તમારા ખેત માટે સૌથી સારો પાક',
+      lbl_your_value: 'તમારું મૂલ્ય', lbl_ideal_for: 'માટે આદર્શ',
+      lbl_calculating: 'ગણતરી થઈ રહી છે…',
+      lbl_generating: 'અહેવાલ તૈયાર થઈ રહ્યો છે',
+      fert_excess_note_tpl: 'વધુ {n} પાકને નુકસાન કરી શકે. આ સિઝનમાં નાઇટ્રોજન ખાતર ટાળો.',
+      lbl_dose: 'માત્રા', lbl_timing: 'સમય', lbl_method: 'પદ્ધતિ',
+      not_in_training: 'તાલીમ ડેટામાં નથી — વિશ્લેષણ સામાન્ય જ્ઞાન પર આધારિત.',
+      unknown_note_pre: '⚠️ "',
+    },
+    Odia: {
+      langLabel: '🌐 ଭାଷା',
+      tab_predict: '🌱 ସର୍ବୋତ୍ତମ ଫସଲ ଅନୁମାନ',
+      tab_yield:   '🔍 ଅମଳ ଅନୁସନ୍ଧାନ',
+      hero1_h2:    'ଆପଣଙ୍କ ଜମି ପାଇଁ <em>ସଠିକ ଫସଲ</em> ଖୋଜନ୍ତୁ',
+      hero1_p:     'ଆପଣଙ୍କ ଗ୍ରାମ ବା ଜିଲ୍ଲା ଟାଇପ୍ କରନ୍ତୁ — ଆମେ ମୌସୁମ ତଥ୍ୟ ସ୍ୱୟଂଚାଳିତ ଭାବେ ଆଣିବୁ। ମାଟି ମୂଲ୍ୟ ପ୍ରବେଶ କରନ୍ତୁ ଓ ଆପଣଙ୍କ ଭାଷାରେ ସୁପାରିଶ ପ୍ରାପ୍ତ କରନ୍ତୁ।',
+      hero2_h2:    'ଆପଣଙ୍କ <em>ଚୟନ କରିଥିବା ଫସଲ</em> ଅମଳ ଯାଞ୍ଚ କରନ୍ତୁ',
+      hero2_p:     'ପୂର୍ବରୁ ଫସଲ ମନରେ ଅଛି? ମାଟି ଓ ଜଳବାୟୁ ତଥ୍ୟ ସହ ପ୍ରବେଶ କରନ୍ତୁ — ଅମଳ କେତେ ହେବ ଜଣାଇବୁ।',
+      step_location: 'ସ୍ଥାନ', step_soil: 'ମାଟି ମୂଲ୍ୟ', step_result: 'ଫଳାଫଳ',
+      step_crop: 'ଫସଲ ଓ ମାଟି', step_yield_result: 'ଅମଳ ରିପୋର୍ଟ',
+      card_location: 'ଆପଣଙ୍କ ସ୍ଥାନ',
+      loc_placeholder: 'ଗ୍ରାମ, ସହର ବା ଜିଲ୍ଲା ଟାଇପ୍ କରନ୍ତୁ…',
+      btn_fetch_weather: '☁️ ମୌସୁମ ଆଣ',
+      pill_temp: 'ତାପମାତ୍ରା', pill_hum: 'ଆର୍ଦ୍ରତା',
+      sec_soil: 'ମୃତ୍ତିକା ସ୍ୱାସ୍ଥ୍ୟ କାର୍ଡରୁ',
+      sec_climate: 'ସ୍ୱୟଂ ପ୍ରାପ୍ତ ଜଳବାୟୁ ତଥ୍ୟ',
+      lbl_N: 'ନାଇଟ୍ରୋଜେନ (N)', hint_N: 'ମି.ଗ୍ରା/କି.ଗ୍ରା · 0–140', ph_N: 'ଯଥା: 90',
+      lbl_P: 'ଫସଫରସ (P)', hint_P: 'ମି.ଗ୍ରା/କି.ଗ୍ରା · 5–145', ph_P: 'ଯଥା: 42',
+      lbl_K: 'ପୋଟାସିୟମ (K)', hint_K: 'ମି.ଗ୍ରା/କି.ଗ୍ରା · 5–205', ph_K: 'ଯଥା: 43',
+      lbl_ph: 'ମାଟି pH', hint_ph: '0–14 · ସାଧାରଣ 5.5–8', ph_ph: 'ଯଥା: 6.5',
+      lbl_temp: 'ତାପମାତ୍ରା (°C)', hint_temp: 'ମୌସୁମ API ରୁ ସ୍ୱୟଂ ଭରା', ph_temp: 'ସ୍ଥାନ ଆଣ ↑',
+      lbl_hum: 'ଆର୍ଦ୍ରତା (%)', hint_hum: 'ମୌସୁମ API ରୁ ସ୍ୱୟଂ ଭରା', ph_hum: 'ସ୍ଥାନ ଆଣ ↑',
+      lbl_rain: 'ବାର୍ଷିକ ବର୍ଷା (ମିମି)', hint_rain: 'ଆପଣଙ୍କ ଅଞ୍ଚଳର ବାର୍ଷିକ ଗଡ଼ ନମୂଦ କରନ୍ତୁ', ph_rain: 'ଯଥା: 200',
+      btn_predict: '🌱 ସର୍ବୋତ୍ତମ ଫସଲ ଅନୁମାନ',
+      sec_crop: 'ଆପଣ ଚାଷ କରିବାକୁ ଚାହୁଁଥିବା ଫସଲ',
+      lbl_crop: 'ଫସଲ ନାମ', hint_crop: 'ଟାଇପ୍ କରନ୍ତୁ ବା ତାଲିକାରୁ ବାଛନ୍ତୁ', ph_crop: 'ଯଥା: ଚାଉଳ, ମକା, କଦଳୀ…',
+      btn_yield: '🔍 ଅମଳ ଦୃଷ୍ଟିଭଙ୍ଗି ଯାଞ୍ଚ',
+      fert_title: '🧪 ସାର ଓ ମାଟି ସଂଶୋଧନ ମାର୍ଗଦର୍ଶିକା',
+      fert_good: 'ଭଲ', fert_low: 'କମ — ସାର ଦିଅ',
+      fert_excess: 'ଅଧିକ — ସାର ଦିଅ ନାହିଁ', fert_high: 'ଅତ୍ୟଧିକ — ମାଟି ସୁଧାର',
+      alert_N: 'ଦୟାକରି ନାଇଟ୍ରୋଜେନ (N) ପ୍ରବେଶ କରନ୍ତୁ।', alert_P: 'ଦୟାକରି ଫସ୍ଫରସ (P) ପ୍ରବେଶ କରନ୍ତୁ।', alert_K: 'ଦୟାକରି ପୋଟାସିୟମ (K) ପ୍ରବେଶ କରନ୍ତୁ।', alert_ph: 'ଦୟାକରି ମାଟି pH ପ୍ରବେଶ କରନ୍ତୁ।',
+      alert_weather: 'ଦୟାକରି ପ୍ରଥମେ ମୌସୁମ ତଥ୍ୟ ଆଣନ୍ତୁ।',
+      alert_rainfall: 'ଦୟାକରି ଆପଣଙ୍କ ଅଞ୍ଚଳର ବାର୍ଷିକ ଗଡ଼ ବର୍ଷା (ମିମି) ପ୍ରବେଶ କରନ୍ତୁ।',
+      alert_crop: 'ଦୟାକରି ଚାଷ କରିବାକୁ ଚାହୁଁଥିବା ଫସଲ ନାମ ଦିଅ।',
+      status_searching: 'ସ୍ଥାନ ଖୋଜାଯାଉଛି…', status_not_found: 'ସ୍ଥାନ ମିଳୁନି। ନିକଟ ସହର ବା ଜିଲ୍ଲା ଚେଷ୍ଟା କରନ୍ତୁ।',
+      status_loc_fail: 'ସ୍ଥାନ ଖୋଜି ପାରିଲୁ ନାହିଁ।', status_fetching: 'ମୌସୁମ ଆଣାଯାଉଛି',
+      status_fetched: '✅ ମୌସୁମ ମିଳିଲା', status_weather_fail: 'ମୌସୁମ ଆସୁ ନାହିଁ। ଇଣ୍ଟରନେଟ ଯାଞ୍ଚ କରନ୍ତୁ।',
+      loading_analyzing: 'ବିଶ୍ଲେଷଣ ହେଉଛି…', loading_checking: 'ଯାଞ୍ଚ ହେଉଛି…',
+      lbl_recommended: 'ପ୍ରସ୍ତାବିତ ଫସଲ', lbl_why: '💡 ଏହି ଫସଲ କାହିଁକି?',
+      lbl_yield_for: 'ଅମଳ ଅନୁମାନ', lbl_yield_analysis: '📋 ଅମଳ ବିଶ୍ଲେଷଣ',
+      lbl_match: 'ଆପଣଙ୍କ ପରିସ୍ଥିତି କେତେ ମିଳୁଛି',
+      lbl_best_crop: 'ବର୍ତ୍ତମାନ ଆପଣଙ୍କ ଜମି ପାଇଁ ସର୍ବୋତ୍ତମ ଫସଲ',
+      lbl_your_value: 'ଆପଣଙ୍କ ମୂଲ୍ୟ', lbl_ideal_for: 'ପାଇଁ ଆଦର୍ଶ',
+      lbl_calculating: 'ଗଣନା ହେଉଛି…',
+      lbl_generating: 'ରିପୋର୍ଟ ତୈୟାର ହେଉଛି',
+      fert_excess_note_tpl: 'ଅଧିକ {n} ଫସଲ ଖ୍ଷତି କରିପାରେ। ଏହି ଋତୁରେ ନାଇଟ୍ରୋଜେନ ସାର ଦିଅ ନାହିଁ।',
+      lbl_dose: 'ମାତ୍ରା', lbl_timing: 'ସମୟ', lbl_method: 'ପ୍ରଣାଳୀ',
+      not_in_training: 'ତାଲିମ ଡେଟାରେ ନାହିଁ — ବିଶ୍ଲେଷଣ ସାଧାରଣ ଜ୍ଞାନ ଉପରେ ଆଧାରିତ।',
+      unknown_note_pre: '⚠️ "',
+    },
+  };
+
+  /* ── Language ── */
+  function getSelectedLang() {
+    return document.getElementById('langSelect').value;
+  }
+
+  function setLang(select) {
+    selectedLang = select.value;
+    applyLang(selectedLang);
+  }
+
+  function s(id, text) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  }
+  function sHTML(id, html) {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = html;
+  }
+  function setLabelFor(labelEl, text) {
+    if (labelEl) labelEl.childNodes[0].textContent = text + ' ';
+  }
+  function qText(sel, text) {
+    const el = document.querySelector(sel);
+    if (el) el.textContent = text;
+  }
+  function qHTML(sel, html) {
+    const el = document.querySelector(sel);
+    if (el) el.innerHTML = html;
+  }
+  function qAttr(sel, attr, val) {
+    const el = document.querySelector(sel);
+    if (el) el.setAttribute(attr, val);
+  }
+  function allText(sel, text) {
+    document.querySelectorAll(sel).forEach(el => el.textContent = text);
+  }
+  function allAttr(sel, attr, val) {
+    document.querySelectorAll(sel).forEach(el => el.setAttribute(attr, val));
+  }
+
+  function applyLang(lang) {
+    const T = UI_STRINGS[lang] || UI_STRINGS['English'];
+
+    // Header
+    qText('.lang-label', T.langLabel);
+
+    // Tab buttons
+    const tabs = document.querySelectorAll('.tab-btn');
+    if (tabs[0]) tabs[0].textContent = T.tab_predict;
+    if (tabs[1]) tabs[1].textContent = T.tab_yield;
+
+    // Hero — Predict tab
+    qHTML('#tab-predict .hero h2', T.hero1_h2);
+    qText('#tab-predict .hero p', T.hero1_p);
+
+    // Hero — Yield tab
+    qHTML('#tab-yield .hero h2', T.hero2_h2);
+    qText('#tab-yield .hero p', T.hero2_p);
+
+    // Steps — Predict
+    const pSteps = document.querySelectorAll('#tab-predict .step');
+    if (pSteps[0]) pSteps[0].lastChild.textContent = ' ' + T.step_location;
+    if (pSteps[1]) pSteps[1].lastChild.textContent = ' ' + T.step_soil;
+    if (pSteps[2]) pSteps[2].lastChild.textContent = ' ' + T.step_result;
+
+    // Steps — Yield
+    const ySteps = document.querySelectorAll('#tab-yield .step');
+    if (ySteps[0]) ySteps[0].lastChild.textContent = ' ' + T.step_location;
+    if (ySteps[1]) ySteps[1].lastChild.textContent = ' ' + T.step_crop;
+    if (ySteps[2]) ySteps[2].lastChild.textContent = ' ' + T.step_yield_result;
+
+    // Card titles (Location)
+    document.querySelectorAll('.card-title').forEach(el => {
+      el.textContent = T.card_location;
+    });
+
+    // Location input placeholders
+    allAttr('#p-locationInput', 'placeholder', T.loc_placeholder);
+    allAttr('#y-locationInput', 'placeholder', T.loc_placeholder);
+
+    // Fetch weather buttons
+    allText('.btn-fetch', T.btn_fetch_weather);
+
+    // Weather pills labels
+    document.querySelectorAll('.pill-label').forEach((el, i) => {
+      el.textContent = (i % 2 === 0) ? T.pill_temp : T.pill_hum;
+    });
+
+    // Section labels
+    const secLabels = document.querySelectorAll('.section-label');
+    // Predict tab: [0]=soil, [1]=climate; Yield tab: [2]=crop, [3]=soil, [4]=climate
+    if (secLabels[0]) secLabels[0].textContent = T.sec_soil;
+    if (secLabels[1]) secLabels[1].textContent = T.sec_climate;
+    if (secLabels[2]) secLabels[2].textContent = T.sec_crop;
+    if (secLabels[3]) secLabels[3].textContent = T.sec_soil;
+    if (secLabels[4]) secLabels[4].textContent = T.sec_climate;
+
+    // Field labels & hints — helper
+    function applyField(prefix) {
+      const fields = [
+        ['N', T.lbl_N, T.hint_N, T.ph_N],
+        ['P', T.lbl_P, T.hint_P, T.ph_P],
+        ['K', T.lbl_K, T.hint_K, T.ph_K],
+        ['ph', T.lbl_ph, T.hint_ph, T.ph_ph],
+        ['temperature', T.lbl_temp, T.hint_temp, T.ph_temp],
+        ['humidity', T.lbl_hum, T.hint_hum, T.ph_hum],
+        ['rainfall', T.lbl_rain, T.hint_rain, T.ph_rain],
+      ];
+      fields.forEach(([id, lbl, hint, ph]) => {
+        const inputEl = document.getElementById(`${prefix}-${id}`);
+        if (!inputEl) return;
+        const fieldDiv = inputEl.closest('.field');
+        if (!fieldDiv) return;
+        const labelEl = fieldDiv.querySelector('label');
+        const hintEl = fieldDiv.querySelector('.hint');
+        if (labelEl) labelEl.textContent = lbl;
+        if (hintEl) hintEl.textContent = hint;
+        if (!inputEl.value) inputEl.setAttribute('placeholder', ph);
+      });
+    }
+    applyField('p');
+    applyField('y');
+
+    // Crop field in yield tab
+    const cropInput = document.getElementById('y-crop');
+    if (cropInput) cropInput.setAttribute('placeholder', T.ph_crop);
+    const cropField = cropInput ? cropInput.closest('.field') : null;
+    if (cropField) {
+      const lbl = cropField.querySelector('label');
+      const hint = cropField.querySelector('.hint');
+      if (lbl) lbl.textContent = T.lbl_crop;
+      if (hint) hint.textContent = T.hint_crop;
+    }
+    // Crop section label (inside yield card)
+    const cropSec = document.querySelector('#tab-yield .section-label');
+    if (cropSec) cropSec.textContent = T.sec_crop;
+
+    // Primary buttons
+    const pBtn = document.getElementById('p-predictBtn');
+    if (pBtn && !pBtn.classList.contains('loading')) pBtn.innerHTML = '<span>🌱</span> ' + T.btn_predict.replace('🌱 ', '');
+    const yBtn = document.getElementById('y-queryBtn');
+    if (yBtn && !yBtn.classList.contains('loading')) yBtn.innerHTML = '<span>🔍</span> ' + T.btn_yield.replace('🔍 ', '');
+  }
+
+  /* ── Tabs ── */
+  function switchTab(name, btn) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  /* ── Autocomplete (shared, prefix = 'p' or 'y') ── */
+  function onLocationInput(pfx) {
+    const q = document.getElementById(`${pfx}-locationInput`).value.trim();
+    loc[pfx] = null;
+    clearTimeout(debounceTimers[pfx]);
+    if (q.length < 2) { hideAC(pfx); return; }
+    debounceTimers[pfx] = setTimeout(() => searchLoc(q, pfx), 380);
+  }
+
+  async function searchLoc(q, pfx) {
+    try {
+      const res = await fetch(`/geocode?q=${encodeURIComponent(q)}&limit=5`);
+      acResults[pfx] = await res.json();
+      showAC(pfx);
+    } catch { hideAC(pfx); }
+  }
+
+  function showAC(pfx) {
+    const list = document.getElementById(`${pfx}-autocompleteList`);
+    const results = acResults[pfx];
+    if (!results.length) { hideAC(pfx); return; }
+    list.innerHTML = results.map((r,i)=>{
+      const city = r.address.city||r.address.town||r.address.village||r.address.county||r.name;
+      const region = [r.address.state,r.address.country].filter(Boolean).join(', ');
+      return `<div class="autocomplete-item" onclick="selectLoc(${i},'${pfx}')"><div class="city">${city}</div><div class="region">${region}</div></div>`;
+    }).join('');
+    list.style.display = 'block'; selIdx[pfx] = -1;
+  }
+
+  function hideAC(pfx) { document.getElementById(`${pfx}-autocompleteList`).style.display='none'; selIdx[pfx]=-1; }
+
+  function onLocationKey(e, pfx) {
+    const items = document.querySelectorAll(`#${pfx}-autocompleteList .autocomplete-item`);
+    if (!items.length) return;
+    if (e.key==='ArrowDown') selIdx[pfx]=Math.min(selIdx[pfx]+1,items.length-1);
+    else if (e.key==='ArrowUp') selIdx[pfx]=Math.max(selIdx[pfx]-1,0);
+    else if (e.key==='Enter'&&selIdx[pfx]>=0){ selectLoc(selIdx[pfx],pfx); return; }
+    else return;
+    items.forEach((el,i)=>el.classList.toggle('selected',i===selIdx[pfx]));
+    e.preventDefault();
+  }
+
+  function selectLoc(i, pfx) {
+    const r = acResults[pfx][i];
+    const city = r.address.city||r.address.town||r.address.village||r.address.county||r.name;
+    const region = [r.address.state,r.address.country].filter(Boolean).join(', ');
+    loc[pfx] = { name:`${city}, ${region}`, lat:parseFloat(r.lat), lon:parseFloat(r.lon) };
+    document.getElementById(`${pfx}-locationInput`).value = loc[pfx].name;
+    hideAC(pfx);
+  }
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.location-input-wrap')) { hideAC('p'); hideAC('y'); }
+  });
+
+  /* ── Fetch Weather (shared) ── */
+  async function fetchWeather(pfx) {
+    const lang = getSelectedLang();
+    const T = UI_STRINGS[lang] || UI_STRINGS['English'];
+    if (!loc[pfx]) {
+      const q = document.getElementById(`${pfx}-locationInput`).value.trim();
+      if (!q) { showStatus(pfx, T.status_searching, 'error'); return; }
+      showStatus(pfx, T.status_searching, 'info');
+      try {
+        const res = await fetch(`/geocode?q=${encodeURIComponent(q)}&limit=1`);
+        const data = await res.json();
+        if (!data.length) { showStatus(pfx, T.status_not_found, 'error'); return; }
+        const r = data[0];
+        const city = r.address.city||r.address.town||r.address.village||r.address.county||r.name;
+        const region = [r.address.state,r.address.country].filter(Boolean).join(', ');
+        loc[pfx] = { name:`${city}, ${region}`, lat:parseFloat(r.lat), lon:parseFloat(r.lon) };
+        document.getElementById(`${pfx}-locationInput`).value = loc[pfx].name;
+      } catch { showStatus(pfx, T.status_loc_fail, 'error'); return; }
+    }
+
+    const btn = document.getElementById(`${pfx}-fetchBtn`);
+    btn.disabled=true; btn.innerHTML=`<span>⏳</span> ${T.status_fetching}…`;
+    showStatus(pfx, `${T.status_fetching} ${loc[pfx].name}…`, 'info');
+
+    try {
+      const {lat,lon} = loc[pfx];
+      const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,precipitation&timezone=auto`);
+      const data = await res.json();
+      const cur = data.current;
+      setAF(`${pfx}-temperature`,cur.temperature_2m);
+      setAF(`${pfx}-humidity`,cur.relative_humidity_2m);
+      setPill(`${pfx}-pill-temp`,`${pfx}-pill-temp-val`,`${cur.temperature_2m} °C`);
+      setPill(`${pfx}-pill-hum`, `${pfx}-pill-hum-val`, `${cur.relative_humidity_2m} %`);
+      showStatus(pfx, `${T.status_fetched} ${loc[pfx].name}`, 'success');
+      setStep(pfx,2);
+    } catch { showStatus(pfx, T.status_weather_fail, 'error'); }
+    finally { btn.disabled=false; btn.innerHTML=`<span>☁️</span> ${T.btn_fetch_weather}`; }
+  }
+
+  function setAF(id,val){ const el=document.getElementById(id); el.value=val; el.classList.add('auto-filled'); }
+  function setPill(pId,vId,text){ document.getElementById(vId).textContent=text; document.getElementById(pId).classList.add('fetched'); }
+  function showStatus(pfx,msg,type){ const el=document.getElementById(`${pfx}-locationStatus`); el.textContent=msg; el.className=`status-msg ${type}`; }
+  function setStep(pfx,n){ for(let i=1;i<=3;i++){ const el=document.getElementById(`${pfx}-step${i}`); el.className='step'+(i<n?' done':i===n?' active':''); } }
+
+  /* ── helpers ── */
+  function getField(pfx,f){ return document.getElementById(`${pfx}-${f}`).value.trim(); }
+  function buildPayload(pfx){
+    const lang = getSelectedLang();
+    const T = UI_STRINGS[lang] || UI_STRINGS['English'];
+    const data = { language: lang };
+    const fieldAlerts = { N: T.alert_N, P: T.alert_P, K: T.alert_K, ph: T.alert_ph };
+    for(const f of ['N','P','K','ph']){
+      const v=getField(pfx,f); if(!v){alert(fieldAlerts[f]);return null;}
+      data[f]=v;
+    }
+    for(const f of ['temperature','humidity']){
+      const v=getField(pfx,f); if(!v){alert(T.alert_weather);return null;}
+      data[f]=v;
+    }
+    const rain=getField(pfx,'rainfall');
+    if(!rain){ alert(T.alert_rainfall); return null; }
+    data['rainfall']=rain;
+    return data;
+  }
+
+  /* ── Predict ── */
+  async function runPredict() {
+    const data = buildPayload('p');
+    if (!data) return;
+    const T = UI_STRINGS[data.language] || UI_STRINGS['English'];
+
+    const btn = document.getElementById('p-predictBtn');
+    btn.classList.add('loading'); btn.innerHTML=`<span>⏳</span> ${T.loading_analyzing}`;
+    setStep('p',3);
+
+    const resultEl = document.getElementById('predict-result');
+    resultEl.style.display='block';
+    resultEl.innerHTML=`
+      <div class="result-card">
+        <div class="result-top">
+          <div class="crop-icon">🌱</div>
+          <div class="result-text">
+            <div class="rlabel">${T.lbl_recommended}</div>
+            <div class="crop-name" style="opacity:.45">${T.loading_analyzing}</div>
+          </div>
+        </div>
+        <div class="explanation-box">
+          <div class="exp-label">💡 ${T.lbl_why}</div>
+          <div class="exp-loading"><div class="spinner"></div> ${T.lbl_generating} ${data.language}…</div>
+        </div>
+      </div>`;
+
+    try {
+      const res = await fetch('/predict',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+      const rawText = await res.text();
+      let json;
+      try { json=JSON.parse(rawText); } catch {
+        resultEl.innerHTML=`<div class="error-card">⚠️ Unexpected server response.<br><pre style="font-size:.8rem;margin-top:.5rem;white-space:pre-wrap">${rawText.slice(0,400)}</pre></div>`;
+        return;
+      }
+      if(json.error){ resultEl.innerHTML=`<div class="error-card">⚠️ ${json.error}</div>`; return; }
+
+      const ui = json.ui || {};
+      const lbl_recommended = ui.recommended_crop || T.lbl_recommended;
+      const lbl_why = ui.why_this_crop || T.lbl_why;
+      const lbl_your_value = ui.your_value || T.lbl_your_value;
+      const lbl_ideal_for  = ui.ideal_for  || T.lbl_ideal_for;
+
+      const expText = (json.explanation&&json.explanation.trim().length>0)
+        ? json.explanation.trim()
+        : 'Explanation not available.';
+      const emoji = cropEmoji[json.crop]||'🌿';
+      const displayName = json.crop_name || json.crop;
+      const locLine = loc.p ? `<div class="location-used">📍 ${loc.p.name}</div>` : '';
+
+      resultEl.innerHTML=`
+        <div class="result-card">
+          <div class="result-top">
+            <div class="crop-icon">${emoji}</div>
+            <div class="result-text">
+              <div class="rlabel">${lbl_recommended}</div>
+              <div class="crop-name">${displayName}</div>
+              ${locLine}
+              <div class="confidence-bar-wrap">
+                <div class="confidence-bar-bg"><div class="confidence-bar-fill" id="confBar" style="width:0%"></div></div>
+                <span class="confidence-pct">${json.confidence}%</span>
+              </div>
+            </div>
+          </div>
+          <div class="explanation-box">
+            <div class="exp-label">💡 ${lbl_why} · ${json.language}</div>
+            <div class="exp-text">${expText}</div>
+          </div>
+        </div>
+        ${renderFertilizer(json.fertilizer, displayName, T, lbl_your_value, lbl_ideal_for)}`;
+      requestAnimationFrame(()=>setTimeout(()=>{ const b=document.getElementById('confBar'); if(b)b.style.width=json.confidence+'%'; },60));
+    } catch(err){
+      resultEl.innerHTML=`<div class="error-card">⚠️ Could not connect to server. Is Flask running?<br><small>${err.message}</small></div>`;
+    } finally { btn.classList.remove('loading'); btn.innerHTML=`<span>🌱</span> ${T.btn_predict}`; }
+  }
+
+  /* ── Yield Query ── */
+  async function runYieldQuery() {
+    const lang = getSelectedLang();
+    const T = UI_STRINGS[lang] || UI_STRINGS['English'];
+    const crop = document.getElementById('y-crop').value.trim().toLowerCase();
+    if (!crop) { alert(T.alert_crop); return; }
+
+    const data = buildPayload('y');
+    if (!data) return;
+    data.crop = crop;
+
+    const btn = document.getElementById('y-queryBtn');
+    btn.classList.add('loading'); btn.innerHTML=`<span>⏳</span> ${T.loading_checking}`;
+    setStep('y',3);
+
+    const resultEl = document.getElementById('yield-result');
+    resultEl.style.display='block';
+    const emoji = cropEmoji[crop]||'🌿';
+    resultEl.innerHTML=`
+      <div class="yield-card green">
+        <div class="yield-top">
+          <div class="yield-icon">${emoji}</div>
+          <div class="yield-meta">
+            <div class="rlabel">${T.lbl_yield_for}</div>
+            <div class="yield-crop">${crop}</div>
+            <div class="yield-outlook" style="opacity:.5">${T.lbl_calculating}</div>
+          </div>
+        </div>
+        <div class="yield-analysis-box">
+          <div class="exp-label">${T.lbl_yield_analysis}</div>
+          <div class="exp-loading"><div class="spinner"></div> ${T.lbl_generating} ${lang}…</div>
+        </div>
+      </div>`;
+
+    try {
+      const res = await fetch('/yield_query',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+      const rawText = await res.text();
+      let json;
+      try { json=JSON.parse(rawText); } catch {
+        resultEl.innerHTML=`<div class="error-card">⚠️ Unexpected server response.<br><pre style="font-size:.8rem;margin-top:.5rem;white-space:pre-wrap">${rawText.slice(0,400)}</pre></div>`;
+        return;
+      }
+      if(json.error){ resultEl.innerHTML=`<div class="error-card">⚠️ ${json.error}</div>`; return; }
+
+      const ui = json.ui || {};
+      const lbl_yield_for    = ui.yield_outlook_for || T.lbl_yield_for;
+      const lbl_yield_analysis = ui.yield_analysis  || T.lbl_yield_analysis;
+      const lbl_match        = ui.match_label        || T.lbl_match;
+      const lbl_best_crop    = ui.best_crop_label    || T.lbl_best_crop;
+      const lbl_your_value   = ui.your_value         || T.lbl_your_value;
+      const lbl_ideal_for    = ui.ideal_for          || T.lbl_ideal_for;
+      const outlookLabel     = json.outlook_label    || json.outlook;
+
+      const analysis = (json.analysis&&json.analysis.trim().length>0)
+        ? json.analysis.trim()
+        : 'Analysis not available.';
+      const displayName = json.crop_name || json.crop;
+      const bestAltName = json.best_alternative_name || json.best_alternative;
+      const locLine = loc.y ? `<div class="location-used" style="font-size:.78rem;opacity:.7;margin-top:.2rem">📍 ${loc.y.name}</div>` : '';
+      const unknownNote = !json.known_crop
+        ? `<div style="font-size:.78rem;opacity:.7;margin-top:.2rem">${T.unknown_note_pre}${json.crop}" ${T.not_in_training}</div>` : '';
+
+      resultEl.innerHTML=`
+        <div class="yield-card ${json.outlook_color}">
+          <div class="yield-top">
+            <div class="yield-icon">${emoji}</div>
+            <div class="yield-meta">
+              <div class="rlabel">${lbl_yield_for}</div>
+              <div class="yield-crop">${displayName}</div>
+              <div class="yield-outlook">📊 ${outlookLabel}</div>
+              ${locLine}
+              ${unknownNote}
+            </div>
+          </div>
+          <div class="yield-stats">
+            <div class="yield-stat">
+              <div class="stat-val">${json.suitability_score}%</div>
+              <div class="stat-label">${lbl_match} ${displayName}</div>
+            </div>
+            <div class="yield-stat">
+              <div class="stat-val" style="font-size:1rem;text-transform:capitalize">${bestAltName}</div>
+              <div class="stat-label">${lbl_best_crop}</div>
+            </div>
+          </div>
+          <div class="yield-analysis-box">
+            <div class="exp-label">${lbl_yield_analysis} · ${json.language}</div>
+            <div class="exp-text">${analysis}</div>
+          </div>
+        </div>
+        ${renderFertilizer(json.fertilizer, displayName, T, lbl_your_value, lbl_ideal_for)}`;
+
+    } catch(err){
+      resultEl.innerHTML=`<div class="error-card">⚠️ Could not connect to server. Is Flask running?<br><small>${err.message}</small></div>`;
+    } finally { btn.classList.remove('loading'); btn.innerHTML=`<span>🔍</span> ${T.btn_yield}`; }
+  }
+  /* ── Fertilizer card renderer ── */
+  function renderFertilizer(fertData, cropDisplayName, T, lbl_your_value, lbl_ideal_for) {
+    if (!fertData || !fertData.length) return '';
+    T = T || UI_STRINGS['English'];
+    lbl_your_value = lbl_your_value || T.lbl_your_value || 'Your value';
+    lbl_ideal_for  = lbl_ideal_for  || T.lbl_ideal_for  || 'Ideal for';
+    const statusIcon  = { good:'✅', low:'⚠️', excess:'🔴', high:'🔴' };
+    const statusLabel = {
+      good:   T.fert_good   || 'Good',
+      low:    T.fert_low    || 'Low — Apply Fertilizer',
+      excess: T.fert_excess || 'Excess — Skip Fertilizing',
+      high:   T.fert_high   || 'Too High — Amend Soil',
+    };
+    const lbl_dose   = T.lbl_dose   || 'Dose';
+    const lbl_timing = T.lbl_timing || 'Timing';
+    const lbl_method = T.lbl_method || 'Method';
+
+    const rows = fertData.map(item => {
+      const icon  = statusIcon[item.status]  || '•';
+      const label = statusLabel[item.status] || item.status;
+      let inner = '';
+      if (item.status === 'good') {
+        inner = '';
+      } else if (item.status === 'excess') {
+        const excessTpl = T.fert_excess_note_tpl || 'Excess {n} can harm the crop. Avoid nitrogen-heavy fertilizers this season.';
+        inner = `<div class="fert-excess-note">⚠️ ${excessTpl.replace('{n}', item.nutrient)}</div>`;
+      } else if ((item.status === 'low' || item.status === 'high') && item.fertilizers && item.fertilizers.length) {
+        const items = item.fertilizers.map(f => `
+          <div class="fert-item">
+            <div class="fert-item-name">🌿 ${f.name}</div>
+            <div class="fert-item-detail">
+              <span>${lbl_dose}:</span><span>${f.dose}</span>
+              <span>${lbl_timing}:</span><span>${f.timing}</span>
+              <span>${lbl_method}:</span><span>${f.method}</span>
+            </div>
+          </div>`).join('');
+        inner = `<div class="fert-suggestions">${items}</div>`;
+      }
+      return `
+        <div class="fert-row ${item.status}">
+          <div class="fert-row-header">
+            <div class="fert-nutrient">${icon} ${item.nutrient}</div>
+            <span class="fert-badge ${item.status}">${label}</span>
+          </div>
+          <div class="fert-values">${lbl_your_value}: <strong>${item.your_value}</strong> &nbsp;·&nbsp; ${lbl_ideal_for} ${cropDisplayName}: <strong>${item.ideal}</strong></div>
+          ${inner}
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="fert-card">
+        <div class="fert-title">${T.fert_title || '🧪 Fertilizer & Soil Amendment Guide'}</div>
+        <div class="fert-rows">${rows}</div>
+      </div>`;
+  }
+</script>
+</body>
+</html>
