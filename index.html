@@ -1,0 +1,2011 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CropSense — Smart Crop Advisor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --soil:    #3b2a1a;
+      --earth:   #6b4c2a;
+      --sage:    #7a9e7e;
+      --leaf:    #4a7c59;
+      --gold:    #d4a843;
+      --offwhite:#faf7f2;
+      --mist:    #e8e2d6;
+      --shadow:  rgba(59,42,26,0.15);
+      --blue:    #3b7fc4;
+      --red:     #c0392b;
+      --orange:  #e07b2a;
+    }
+    body { font-family:'DM Sans',sans-serif; background:var(--offwhite); color:var(--soil); min-height:100vh; overflow-x:hidden; }
+    body::before {
+      content:''; position:fixed; inset:0; z-index:-1;
+      background:
+        radial-gradient(ellipse 80% 60% at 10% 20%,rgba(122,158,126,.12) 0%,transparent 60%),
+        radial-gradient(ellipse 60% 80% at 90% 80%,rgba(212,168,67,.08) 0%,transparent 60%),
+        var(--offwhite);
+    }
+
+    /* ── Header ── */
+    header {
+      padding:1.5rem 2.5rem;
+      display:flex; align-items:center; justify-content:space-between;
+      border-bottom:1.5px solid var(--mist); flex-wrap:wrap; gap:1rem;
+    }
+    .logo { display:flex; align-items:flex-end; gap:.9rem; }
+    .logo-mark { width:44px;height:44px;background:var(--leaf);border-radius:11px;display:grid;place-items:center;font-size:1.4rem;flex-shrink:0;box-shadow:0 4px 14px rgba(74,124,89,.3); }
+    .logo-text h1 { font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:900;letter-spacing:-.02em;line-height:1; }
+    .logo-text p { font-size:.75rem;color:var(--earth);letter-spacing:.08em;text-transform:uppercase;font-weight:300;margin-top:2px; }
+    /* ── Language pills ── */
+    .lang-switcher { display:flex;align-items:center;gap:.5rem;flex-wrap:wrap; }
+    .lang-label { font-size:.7rem;color:var(--earth);text-transform:uppercase;letter-spacing:.08em;font-weight:500;white-space:nowrap;margin-right:.2rem; }
+    .lang-pills { display:flex;flex-wrap:wrap;gap:.35rem; }
+    .lang-pill {
+      border:1.5px solid var(--mist); border-radius:20px;
+      padding:.3rem .75rem;
+      font-family:'DM Sans',sans-serif; font-size:.78rem; font-weight:500;
+      color:var(--earth); background:white; cursor:pointer; outline:none;
+      transition:border-color .18s, background .18s, color .18s, box-shadow .18s;
+      white-space:nowrap;
+    }
+    .lang-pill:hover { border-color:var(--sage); background:rgba(122,158,126,.07); color:var(--leaf); }
+    .lang-pill.active { border-color:var(--leaf); background:var(--leaf); color:white; font-weight:600; box-shadow:0 2px 8px rgba(74,124,89,.25); }
+
+    /* ── Landing page ── */
+    #landing-page { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:70vh; padding:2rem; text-align:center; animation:fadeUp .45s ease; }
+    .landing-hero { margin-bottom:2.5rem; }
+    .landing-icon { font-size:3.5rem; margin-bottom:1rem; filter:drop-shadow(0 4px 12px rgba(74,124,89,.3)); }
+    .landing-hero h2 { font-family:'Playfair Display',serif; font-size:clamp(2rem,5vw,3rem); font-weight:900; line-height:1.1; margin-bottom:.8rem; }
+    .landing-hero h2 em { font-style:normal; color:var(--leaf); }
+    .landing-hero p { color:var(--earth); font-size:1rem; font-weight:300; max-width:500px; line-height:1.75; margin:0 auto; }
+    .landing-cards { display:flex; gap:1.4rem; flex-wrap:wrap; justify-content:center; width:100%; max-width:720px; }
+    .landing-card {
+      flex:1; min-width:260px; max-width:320px;
+      background:white; border:2px solid var(--mist); border-radius:22px;
+      padding:2rem 1.8rem; cursor:pointer; text-align:left;
+      transition:all .22s; box-shadow:0 4px 20px var(--shadow);
+      position:relative; overflow:hidden;
+    }
+    .landing-card::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(122,158,126,.05) 0%,transparent 70%); opacity:0; transition:opacity .22s; }
+    .landing-card:hover { border-color:var(--leaf); transform:translateY(-4px); box-shadow:0 10px 36px rgba(74,124,89,.2); }
+    .landing-card:hover::before { opacity:1; }
+    .landing-card:active { transform:translateY(-1px); }
+    .lc-icon { font-size:2.4rem; margin-bottom:1rem; display:block; }
+    .lc-title { font-family:'Playfair Display',serif; font-size:1.25rem; font-weight:700; color:var(--soil); margin-bottom:.5rem; }
+    .lc-desc { font-size:.87rem; color:var(--earth); line-height:1.65; font-weight:300; }
+    .lc-cta { display:inline-flex; align-items:center; gap:.4rem; margin-top:1.2rem; font-size:.82rem; font-weight:600; color:var(--leaf); letter-spacing:.04em; }
+    .lc-cta::after { content:'→'; transition:transform .18s; }
+    .landing-card:hover .lc-cta::after { transform:translateX(3px); }
+
+    /* ── Tabs ── */
+    .tab-bar {
+      display:flex; gap:0;
+      border-bottom:2px solid var(--mist);
+      padding:0 2.5rem;
+      background:white;
+      align-items:center;
+    }
+    .tab-btn.back-btn {
+      color:var(--earth); font-size:.82rem; font-weight:400;
+      padding:.8rem 1rem; opacity:.75;
+    }
+    .tab-btn.back-btn:hover { color:var(--leaf); opacity:1; }
+    .tab-btn {
+      padding:1rem 1.6rem;
+      font-family:'DM Sans',sans-serif; font-size:.9rem; font-weight:500;
+      background:none; border:none; cursor:pointer;
+      color:var(--earth);
+      border-bottom:3px solid transparent;
+      margin-bottom:-2px;
+      transition:color .18s, border-color .18s;
+      display:flex; align-items:center; gap:.5rem;
+    }
+    .tab-btn:hover { color:var(--leaf); }
+    .tab-btn.active { color:var(--leaf); border-bottom-color:var(--leaf); font-weight:600; }
+
+    /* ── Main ── */
+    main { max-width:900px;margin:0 auto;padding:2.5rem 2rem 5rem; }
+    .tab-panel { display:none; }
+    .tab-panel.active { display:block; }
+
+    .hero { margin-bottom:2rem; }
+    .hero h2 { font-family:'Playfair Display',serif;font-size:clamp(1.7rem,4.5vw,2.8rem);font-weight:700;line-height:1.15;max-width:560px; }
+    .hero h2 em { font-style:normal;color:var(--leaf); }
+    .hero p { margin-top:.8rem;color:var(--earth);font-size:.95rem;font-weight:300;max-width:500px;line-height:1.7; }
+
+    /* Steps */
+    .steps { display:flex;align-items:center;margin-bottom:1.8rem; }
+    .step { display:flex;align-items:center;gap:.45rem;font-size:.75rem;font-weight:500;letter-spacing:.05em;text-transform:uppercase;color:#bbb; }
+    .step.active { color:var(--leaf); }
+    .step.done { color:var(--gold); }
+    .step-num { width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:.7rem;font-weight:700;background:#e8e2d6;color:#999;flex-shrink:0; }
+    .step.active .step-num { background:var(--leaf);color:white; }
+    .step.done .step-num { background:var(--gold);color:white; }
+    .step-sep { width:28px;height:1.5px;background:var(--mist);margin:0 .4rem;flex-shrink:0; }
+
+    /* Cards */
+    .card { background:white;border:1.5px solid var(--mist);border-radius:20px;padding:2rem 2.5rem;box-shadow:0 6px 36px var(--shadow);margin-bottom:1.4rem; }
+    .card-title { font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;margin-bottom:1.4rem;display:flex;align-items:center;gap:.6rem; }
+    .card-title::before { content:'';width:16px;height:3px;background:var(--gold);border-radius:2px; }
+
+    /* Location */
+    .location-row { display:flex;gap:.8rem;align-items:flex-start; }
+    .location-input-wrap { flex:1;position:relative; }
+    .location-input-wrap input { width:100%;border:1.5px solid var(--mist);border-radius:10px;padding:.72rem 1rem .72rem 2.5rem;font-family:'DM Sans',sans-serif;font-size:.95rem;color:var(--soil);background:var(--offwhite);outline:none;transition:border-color .2s,box-shadow .2s; }
+    .location-input-wrap input:focus { border-color:var(--sage);box-shadow:0 0 0 3px rgba(122,158,126,.15);background:white; }
+    .location-icon { position:absolute;left:.85rem;top:50%;transform:translateY(-50%);font-size:.95rem;pointer-events:none; }
+    .autocomplete-list { position:absolute;top:calc(100% + 4px);left:0;right:0;background:white;border:1.5px solid var(--mist);border-radius:10px;box-shadow:0 8px 24px var(--shadow);z-index:100;max-height:220px;overflow-y:auto; }
+    .autocomplete-item { padding:.65rem 1rem;font-size:.88rem;cursor:pointer;border-bottom:1px solid var(--mist);transition:background .15s; }
+    .autocomplete-item:last-child { border-bottom:none; }
+    .autocomplete-item:hover,.autocomplete-item.selected { background:var(--offwhite); }
+    .autocomplete-item .city { font-weight:500; }
+    .autocomplete-item .region { color:var(--earth);font-size:.78rem; }
+    .btn-fetch { padding:.72rem 1.3rem;background:var(--blue);color:white;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:500;cursor:pointer;white-space:nowrap;transition:background .2s,transform .15s;box-shadow:0 3px 12px rgba(59,127,196,.28);display:flex;align-items:center;gap:.4rem; }
+    .btn-fetch:hover { background:#2e6aab;transform:translateY(-1px); }
+    .btn-fetch:active { transform:translateY(0); }
+    .btn-fetch:disabled { opacity:.6;pointer-events:none; }
+    .status-msg { font-size:.82rem;margin-top:.75rem;padding:.45rem .8rem;border-radius:8px;display:none; }
+    .status-msg.info    { background:#e8f4fd;color:#2563a8;display:block; }
+    .status-msg.success { background:rgba(122,158,126,.12);color:var(--leaf);display:block; }
+    .status-msg.error   { background:#fff3f3;color:var(--red);display:block; }
+    .weather-pills { display:flex;gap:.7rem;flex-wrap:wrap;margin-top:.9rem; }
+    .weather-pill { display:flex;align-items:center;gap:.45rem;background:var(--offwhite);border:1.5px solid var(--mist);border-radius:50px;padding:.38rem .9rem;font-size:.83rem;transition:border-color .3s,background .3s; }
+    .weather-pill .pill-label { color:var(--earth);font-size:.73rem; }
+    .weather-pill .pill-val { font-weight:500; }
+    .weather-pill.fetched { border-color:var(--sage);background:rgba(122,158,126,.08); }
+
+    /* ── Inline validation errors ── */
+    .field-error {
+      font-size:.72rem; color:var(--red); margin-top:.25rem;
+      display:none; align-items:center; gap:.3rem;
+      animation:fadeIn .2s ease;
+    }
+    .field-error.visible { display:flex; }
+    .field-error::before { content:'⚠'; font-size:.8rem; flex-shrink:0; }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(-3px);}to{opacity:1;transform:translateY(0);} }
+
+    /* Form-level error banner */
+    .form-error-banner {
+      background:#fff3f3; border:1.5px solid #fcc; color:var(--red);
+      border-radius:10px; padding:.7rem 1rem; font-size:.85rem;
+      margin-bottom:1rem; display:none; align-items:center; gap:.5rem;
+      animation:fadeIn .25s ease;
+    }
+    .form-error-banner.visible { display:flex; }
+
+    /* Weather warning banner */
+    .weather-warning {
+      background:#fff8e6; border:1.5px solid #f5c97a; color:#7a5000;
+      border-radius:10px; padding:.65rem 1rem; font-size:.82rem;
+      margin-bottom:1rem; display:none; align-items:center; gap:.5rem;
+    }
+    .weather-warning.visible { display:flex; }
+
+    /* Unit note badges */
+    .unit-note {
+      display:inline-flex; align-items:center; gap:.35rem;
+      font-size:.67rem; color:#7a9e7e; background:rgba(122,158,126,.1);
+      border:1px solid rgba(122,158,126,.25); border-radius:20px;
+      padding:.18rem .55rem; margin-top:.3rem; line-height:1.4;
+    }
+    .rainfall-note {
+      font-size:.67rem; color:var(--earth); background:var(--offwhite);
+      border:1px dashed var(--mist); border-radius:6px;
+      padding:.3rem .6rem; margin-top:.4rem; line-height:1.5;
+    }
+
+    /* Fields */
+    .section-label { font-size:.72rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--earth);margin-bottom:1rem;display:flex;align-items:center;gap:.5rem; }
+    .section-label::after { content:'';flex:1;height:1px;background:var(--mist); }
+    .field-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:1.2rem; }
+    .field { display:flex;flex-direction:column;gap:.4rem; }
+    .field label { font-size:.7rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--earth); }
+    .field .hint { font-size:.67rem;color:#aaa;margin-top:-.15rem; }
+    .field input,.field select {
+      border:1.5px solid var(--mist);border-radius:10px;padding:.68rem 1rem;
+      font-family:'DM Sans',sans-serif;font-size:.93rem;color:var(--soil);
+      background:var(--offwhite);outline:none;
+      transition:border-color .2s,box-shadow .2s,background .3s;
+    }
+    .field input:not([readonly]):focus,.field select:focus { border-color:var(--sage);box-shadow:0 0 0 3px rgba(122,158,126,.15);background:white; }
+    .field input.auto-filled { border-color:var(--sage);background:rgba(122,158,126,.07);color:var(--leaf);font-weight:500; }
+    .field input.input-error { border-color:var(--red) !important; background:#fff8f8 !important; }
+    .field input[readonly] { cursor:default; }
+    .field input::placeholder { color:#c8bfb0; }
+    .field select { appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b4c2a' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 1rem center;padding-right:2.5rem;cursor:pointer; }
+    .divider { height:1.5px;background:var(--mist);margin:1.8rem 0;border-radius:2px; }
+
+    /* Crop input with datalist */
+    .crop-input-wrap { position:relative; }
+    .crop-input-wrap input { width:100%; }
+
+    /* Buttons */
+    .btn-primary {
+      display:flex;align-items:center;justify-content:center;gap:.6rem;width:100%;padding:1rem;
+      background:var(--leaf);color:white;font-family:'DM Sans',sans-serif;font-size:1rem;font-weight:500;
+      border:none;border-radius:12px;cursor:pointer;
+      transition:background .2s,transform .15s,box-shadow .2s;
+      box-shadow:0 4px 18px rgba(74,124,89,.3);
+    }
+    .btn-primary:hover { background:#3d6b49;box-shadow:0 6px 24px rgba(74,124,89,.4);transform:translateY(-1px); }
+    .btn-primary:active { transform:translateY(0); }
+    .btn-primary.loading { opacity:.7;pointer-events:none; }
+    .btn-primary:disabled { opacity:.5;pointer-events:none;cursor:not-allowed; }
+
+    /* ── Predict result ── */
+    #predict-result { margin-top:1.8rem;display:none;animation:fadeUp .4s ease; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);} }
+    .result-card { background:linear-gradient(135deg,var(--leaf) 0%,#3d6b49 100%);color:white;border-radius:16px;padding:1.8rem;box-shadow:0 8px 32px rgba(74,124,89,.35); }
+    .result-top { display:flex;align-items:center;gap:1.4rem; }
+    .crop-icon { font-size:2.8rem;flex-shrink:0;filter:drop-shadow(0 2px 8px rgba(0,0,0,.2)); }
+    .result-text .rlabel { font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;opacity:.75; }
+    .result-text .crop-name { font-family:'Playfair Display',serif;font-size:2rem;font-weight:900;line-height:1.1;text-transform:capitalize; }
+    .result-text .location-used { font-size:.78rem;opacity:.7;margin-top:.2rem; }
+    .confidence-bar-wrap { margin-top:.6rem;display:flex;align-items:center;gap:.7rem; }
+    .confidence-bar-bg { flex:1;height:6px;background:rgba(255,255,255,.2);border-radius:3px;overflow:hidden; }
+    .confidence-bar-fill { height:100%;background:var(--gold);border-radius:3px;transition:width .8s cubic-bezier(.22,.61,.36,1); }
+    .confidence-pct { font-size:.82rem;font-weight:500;opacity:.9;white-space:nowrap; }
+    /* Confidence UX label */
+    .conf-level-badge {
+      display:inline-flex; align-items:center; gap:.3rem;
+      font-size:.72rem; font-weight:600; letter-spacing:.05em; text-transform:uppercase;
+      padding:.2rem .6rem; border-radius:20px; margin-top:.4rem;
+    }
+    .conf-level-badge.high   { background:rgba(255,255,255,.25); color:white; }
+    .conf-level-badge.medium { background:rgba(255,200,80,.25);  color:#ffe8a0; }
+    .conf-level-badge.low    { background:rgba(255,130,80,.2);   color:#ffc8a0; }
+    .conf-explain {
+      margin-top:.65rem;
+      font-size:.82rem; line-height:1.55; opacity:.88; font-weight:300;
+      background:rgba(255,255,255,.12);
+      border:1px solid rgba(255,255,255,.18);
+      border-radius:8px; padding:.55rem .8rem;
+    }
+    .conf-explain strong { font-weight:600; }
+    .explanation-box { margin-top:1.2rem;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.22);border-radius:12px;padding:1rem 1.2rem; }
+    .exp-label { font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;opacity:.75;margin-bottom:.55rem;display:flex;align-items:center;gap:.4rem; }
+    .exp-text { font-size:.97rem;line-height:1.7;opacity:.97;font-weight:300; }
+
+    /* ── Alternatives section (predict tab) ── */
+    .alternatives-section {
+      margin-top:1rem;
+      background:white;border:1.5px solid var(--mist);border-radius:14px;padding:1.2rem 1.4rem;
+    }
+    .alt-section-title {
+      font-size:.72rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+      color:var(--earth);margin-bottom:.9rem;display:flex;align-items:center;gap:.4rem;
+    }
+    .alt-section-title::after { content:'';flex:1;height:1px;background:var(--mist); }
+    .alt-cards-grid { display:flex;flex-wrap:wrap;gap:.65rem; }
+
+    /* Alternative crop card/button */
+    .alt-crop-card {
+      display:flex;align-items:center;gap:.5rem;
+      background:var(--offwhite);border:1.5px solid var(--mist);
+      border-radius:10px;padding:.55rem .9rem;
+      cursor:pointer;transition:all .2s;
+      font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:500;color:var(--soil);
+      position:relative;
+    }
+    .alt-crop-card:hover { border-color:var(--sage);background:rgba(122,158,126,.07);transform:translateY(-1px); }
+    .alt-crop-card.open  { border-color:var(--leaf);background:rgba(74,124,89,.06); }
+    .alt-crop-card .alt-emoji { font-size:1.1rem; }
+    .alt-crop-card .alt-name { text-transform:capitalize; }
+    .alt-crop-card .alt-conf { font-size:.7rem;color:var(--earth);margin-left:.25rem;opacity:.8; }
+    .alt-crop-card .alt-chevron { margin-left:auto;font-size:.7rem;transition:transform .2s; }
+    .alt-crop-card.open .alt-chevron { transform:rotate(180deg); }
+
+    /* Expandable details panel */
+    .alt-detail-panel {
+      max-height:0;overflow:hidden;
+      transition:max-height .35s cubic-bezier(.4,0,.2,1),opacity .3s ease;
+      opacity:0;
+    }
+    .alt-detail-panel.open {
+      max-height:400px;opacity:1;
+    }
+    .alt-detail-inner {
+      background:var(--offwhite);border:1.5px solid var(--mist);border-radius:10px;
+      padding:.9rem 1.1rem;margin-top:.6rem;
+    }
+    .alt-detail-title { font-size:.7rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--earth);margin-bottom:.6rem; }
+    .alt-detail-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:.5rem; }
+    .alt-detail-cell { background:white;border:1px solid var(--mist);border-radius:8px;padding:.5rem .7rem; }
+    .alt-detail-cell .adc-label { font-size:.65rem;text-transform:uppercase;letter-spacing:.07em;color:var(--earth);font-weight:500; }
+    .alt-detail-cell .adc-val { font-size:.92rem;font-weight:600;color:var(--soil);margin-top:.1rem; }
+    .alt-detail-cell .adc-unit { font-size:.65rem;color:#aaa; }
+    .alt-expert-note {
+      font-size:.72rem;color:var(--earth);font-style:italic;
+      border-top:1px solid var(--mist);margin-top:.7rem;padding-top:.6rem;
+    }
+
+    /* ── Yield result ── */
+    #yield-result { margin-top:1.8rem;display:none;animation:fadeUp .4s ease; }
+
+    .yield-card { border-radius:16px;padding:1.8rem;color:white;box-shadow:0 8px 32px rgba(0,0,0,.2); }
+    .yield-card.green  { background:linear-gradient(135deg,#4a7c59,#3d6b49); }
+    .yield-card.yellow { background:linear-gradient(135deg,#b8922a,#9a7820); }
+    .yield-card.orange { background:linear-gradient(135deg,#c0622a,#a04f1e); }
+    .yield-card.red    { background:linear-gradient(135deg,#c0392b,#a02d23); }
+
+    .yield-top { display:flex;align-items:center;gap:1.4rem;margin-bottom:1.2rem; }
+    .yield-icon { font-size:2.8rem;flex-shrink:0;filter:drop-shadow(0 2px 8px rgba(0,0,0,.2)); }
+    .yield-meta .rlabel { font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;opacity:.75; }
+    .yield-meta .yield-crop { font-family:'Playfair Display',serif;font-size:2rem;font-weight:900;line-height:1.1;text-transform:capitalize; }
+    .yield-meta .yield-outlook { font-size:1rem;font-weight:600;margin-top:.1rem;opacity:.95; }
+
+    .yield-stats { display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1.2rem; }
+    .yield-stat {
+      flex:1;min-width:100px;
+      background:rgba(255,255,255,.15);
+      border:1px solid rgba(255,255,255,.2);
+      border-radius:10px;padding:.7rem 1rem;text-align:center;
+    }
+    .yield-stat .stat-val { font-size:1.5rem;font-weight:700;line-height:1; }
+    .yield-stat .stat-label { font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;opacity:.75;margin-top:.2rem; }
+
+    .yield-analysis-box { background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.22);border-radius:12px;padding:1rem 1.2rem; }
+    .yield-analysis-box .exp-label { font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;opacity:.75;margin-bottom:.55rem;display:flex;align-items:center;gap:.4rem; }
+    .yield-analysis-box .exp-text { font-size:.97rem;line-height:1.7;opacity:.97;font-weight:300; }
+
+    /* ── Yield alt crop clickable card ── */
+    .yield-alt-section {
+      margin-top:1rem;
+      background:white;border:1.5px solid var(--mist);border-radius:14px;padding:1.2rem 1.4rem;
+    }
+
+    /* Spinner */
+    .exp-loading { display:flex;align-items:center;gap:.5rem;opacity:.75;font-size:.9rem; }
+    .spinner { width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:white;border-radius:50%;animation:spin .8s linear infinite; }
+    @keyframes spin { to{transform:rotate(360deg);} }
+
+    .error-card { background:#fff3f3;border:1.5px solid #fcc;color:var(--red);border-radius:12px;padding:1rem 1.3rem;font-size:.9rem; }
+
+    /* ── Fertilizer card ── */
+    .fert-card { background:white; border:1.5px solid var(--mist); border-radius:16px; padding:1.4rem 1.6rem; margin-top:1.2rem; }
+    .fert-title { font-family:'Playfair Display',serif; font-size:1rem; font-weight:700; margin-bottom:.4rem; display:flex; align-items:center; gap:.5rem; color:var(--soil); }
+    .fert-disclaimer { font-size:.72rem;color:var(--earth);font-style:italic;margin-bottom:1rem;padding-bottom:.8rem;border-bottom:1px solid var(--mist); }
+    .fert-rows { display:flex; flex-direction:column; gap:.7rem; }
+    .fert-row { border-radius:10px; padding:.7rem 1rem; border:1.5px solid var(--mist); }
+    .fert-row.good    { border-color:#b7ddc0; background:#f2fbf4; }
+    .fert-row.low     { border-color:#f5c97a; background:#fffbf0; }
+    .fert-row.excess  { border-color:#f5a97a; background:#fff6f0; }
+    .fert-row.high    { border-color:#f5a97a; background:#fff6f0; }
+    .fert-row-header  { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.4rem; }
+    .fert-nutrient    { font-weight:600; font-size:.9rem; color:var(--soil); display:flex; align-items:center; gap:.4rem; }
+    .fert-badge       { font-size:.68rem; font-weight:600; letter-spacing:.07em; text-transform:uppercase; padding:.2rem .55rem; border-radius:20px; }
+    .fert-badge.good  { background:#d1f0db; color:#2d6e3e; }
+    .fert-badge.low   { background:#fde9b0; color:#7a5000; }
+    .fert-badge.excess{ background:#fdd5b0; color:#7a2e00; }
+    .fert-badge.high  { background:#fdd5b0; color:#7a2e00; }
+    .fert-values      { font-size:.78rem; color:var(--earth); margin-top:.25rem; }
+    .fert-suggestions { margin-top:.75rem; display:flex; flex-direction:column; gap:.55rem; }
+    .fert-item        { background:white; border:1px solid var(--mist); border-radius:8px; padding:.6rem .85rem; }
+    .fert-item-name   { font-weight:600; font-size:.88rem; color:var(--leaf); margin-bottom:.3rem; }
+    .fert-item-detail { font-size:.78rem; color:var(--earth); display:grid; grid-template-columns:80px 1fr; gap:.15rem .5rem; line-height:1.5; }
+    .fert-item-detail span:nth-child(odd) { font-weight:500; color:var(--soil); }
+    .fert-excess-note { font-size:.82rem; color:#a05000; margin-top:.4rem; font-style:italic; }
+
+    /* ── Smart yield decision banners ── */
+    .decision-banner {
+      display:flex; align-items:flex-start; gap:.8rem;
+      border-radius:12px; padding:.95rem 1.1rem; margin-top:1rem;
+      animation:fadeUp .35s ease;
+    }
+    .decision-banner.optimal {
+      background:linear-gradient(135deg,rgba(74,124,89,.12),rgba(74,124,89,.06));
+      border:1.5px solid rgba(74,124,89,.35);
+    }
+    .decision-banner.not-optimal {
+      background:linear-gradient(135deg,rgba(212,168,67,.12),rgba(212,168,67,.06));
+      border:1.5px solid rgba(212,168,67,.4);
+    }
+    .decision-icon { font-size:1.5rem; flex-shrink:0; line-height:1; }
+    .decision-body { flex:1; }
+    .decision-badge {
+      display:inline-block; font-size:.72rem; font-weight:700;
+      letter-spacing:.06em; text-transform:uppercase;
+      padding:.2rem .6rem; border-radius:20px; margin-bottom:.35rem;
+    }
+    .decision-banner.optimal .decision-badge { background:rgba(74,124,89,.2); color:#2d6e3e; }
+    .decision-banner.not-optimal .decision-badge { background:rgba(212,168,67,.25); color:#7a5000; }
+    .decision-msg { font-size:.88rem; color:var(--soil); line-height:1.6; }
+
+    /* ── Crop comparison section ── */
+    .comparison-section {
+      background:white; border:1.5px solid var(--mist);
+      border-radius:14px; padding:1.2rem 1.4rem; margin-top:1rem;
+    }
+    .comparison-title {
+      font-family:'Playfair Display',serif; font-size:.95rem; font-weight:700;
+      color:var(--soil); margin-bottom:1rem; display:flex; align-items:center; gap:.5rem;
+    }
+    .comparison-rows { display:flex; flex-direction:column; gap:.6rem; }
+    .comparison-row {
+      display:flex; align-items:center; gap:.8rem;
+      padding:.55rem .8rem; border-radius:9px;
+      border:1.5px solid var(--mist); background:var(--offwhite);
+      transition:border-color .2s;
+    }
+    .comparison-row.selected-crop {
+      border-color:var(--sage); background:rgba(122,158,126,.06);
+    }
+    .comparison-row.best-crop {
+      border-color:var(--gold); background:rgba(212,168,67,.07);
+    }
+    .comp-emoji { font-size:1.3rem; flex-shrink:0; }
+    .comp-info { flex:1; min-width:0; }
+    .comp-name { font-size:.88rem; font-weight:600; color:var(--soil); text-transform:capitalize; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .comp-tag { font-size:.65rem; font-weight:600; letter-spacing:.07em; text-transform:uppercase; padding:.12rem .4rem; border-radius:8px; margin-left:.35rem; vertical-align:middle; }
+    .comp-tag.your  { background:#e8f4fd; color:#2563a8; }
+    .comp-tag.best  { background:rgba(212,168,67,.2); color:#7a5000; }
+    .comp-bar-wrap { flex:2; min-width:80px; }
+    .comp-bar-bg { height:7px; background:#e8e2d6; border-radius:4px; overflow:hidden; }
+    .comp-bar-fill { height:100%; border-radius:4px; transition:width .8s cubic-bezier(.22,.61,.36,1); }
+    .comp-bar-fill.selected-fill { background:var(--sage); }
+    .comp-bar-fill.best-fill     { background:var(--gold); }
+    .comp-bar-fill.other-fill    { background:#bbb; }
+    .comp-score { font-size:.85rem; font-weight:700; color:var(--soil); white-space:nowrap; min-width:38px; text-align:right; }
+    .comparison-note { font-size:.7rem; color:#aaa; margin-top:.75rem; font-style:italic; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">🌾</div>
+    <div class="logo-text"><h1>CropSense</h1><p>AI-Powered Crop Advisor</p></div>
+  </div>
+  <div class="lang-switcher">
+    <span class="lang-label" id="langLabelEl">🌐</span>
+    <div class="lang-pills" id="langPills">
+      <button class="lang-pill active" data-lang="English"  onclick="setLangPill('English')">English</button>
+      <button class="lang-pill"        data-lang="Hindi"    onclick="setLangPill('Hindi')">हिन्दी</button>
+      <button class="lang-pill"        data-lang="Telugu"   onclick="setLangPill('Telugu')">తెలుగు</button>
+      <button class="lang-pill"        data-lang="Tamil"    onclick="setLangPill('Tamil')">தமிழ்</button>
+      <button class="lang-pill"        data-lang="Kannada"  onclick="setLangPill('Kannada')">ಕನ್ನಡ</button>
+      <button class="lang-pill"        data-lang="Marathi"  onclick="setLangPill('Marathi')">मराठी</button>
+      <button class="lang-pill"        data-lang="Bengali"  onclick="setLangPill('Bengali')">বাংলা</button>
+      <button class="lang-pill"        data-lang="Punjabi"  onclick="setLangPill('Punjabi')">ਪੰਜਾਬੀ</button>
+      <button class="lang-pill"        data-lang="Gujarati" onclick="setLangPill('Gujarati')">ગુજરાતી</button>
+      <button class="lang-pill"        data-lang="Odia"     onclick="setLangPill('Odia')">ଓଡ଼ିଆ</button>
+    </div>
+  </div>
+</header>
+
+<!-- Tab Bar (hidden until mode chosen) -->
+<div class="tab-bar" id="mainTabBar" style="display:none">
+  <button class="tab-btn back-btn" onclick="backToLanding()" title="Back to home">← <span id="back-home-label">Home</span></button>
+  <div style="width:1.5px;background:var(--mist);margin:.5rem 0;flex-shrink:0"></div>
+  <button class="tab-btn active" id="tab-btn-predict" onclick="switchTab('predict', this)">🌱 Predict Best Crop</button>
+  <button class="tab-btn" id="tab-btn-yield" onclick="switchTab('yield', this)">🔍 Yield Query</button>
+</div>
+
+<main>
+
+<!-- ══════════ LANDING PAGE ══════════ -->
+<div id="landing-page">
+  <div class="landing-hero">
+    <div class="landing-icon">🌾</div>
+    <h2 id="landing-h2">Welcome to <em>CropSense</em></h2>
+    <p id="landing-p">Your AI-powered crop advisor. What would you like to do today?</p>
+  </div>
+  <div class="landing-cards">
+    <div class="landing-card" onclick="goToMode('predict')">
+      <span class="lc-icon">🌱</span>
+      <div class="lc-title" id="lc-title-predict">Crop Recommendation</div>
+      <div class="lc-desc" id="lc-desc-predict">Don't know what to grow? Enter your soil & location — we'll recommend the best crop for your field with a full explanation.</div>
+      <div class="lc-cta" id="lc-cta-predict">Get Recommendation</div>
+    </div>
+    <div class="landing-card" onclick="goToMode('yield')">
+      <span class="lc-icon">🔍</span>
+      <div class="lc-title" id="lc-title-yield">Yield Query</div>
+      <div class="lc-desc" id="lc-desc-yield">Already have a crop in mind? Check how suitable it is for your field conditions and get a yield outlook.</div>
+      <div class="lc-cta" id="lc-cta-yield">Check Yield</div>
+    </div>
+  </div>
+</div>
+
+  <!-- ══════════ TAB 1: PREDICT ══════════ -->
+  <div class="tab-panel active" id="tab-predict">
+    <div class="hero">
+      <h2 id="hero1-h2">Find the <em>perfect crop</em> for your field</h2>
+      <p id="hero1-p">Type your village or district — we'll auto-fetch the weather. Add your soil values and get a recommendation with explanation in your language.</p>
+    </div>
+
+    <div class="steps">
+      <div class="step active" id="p-step1"><div class="step-num">1</div> <span class="step-label">Location</span></div>
+      <div class="step-sep"></div>
+      <div class="step" id="p-step2"><div class="step-num">2</div> <span class="step-label">Soil Values</span></div>
+      <div class="step-sep"></div>
+      <div class="step" id="p-step3"><div class="step-num">3</div> <span class="step-label">Result</span></div>
+    </div>
+
+    <!-- Location -->
+    <div class="card">
+      <div class="card-title" id="p-card-title">Your Location</div>
+      <div class="location-row">
+        <div class="location-input-wrap">
+          <span class="location-icon">📍</span>
+          <input type="text" id="p-locationInput" placeholder="Type your village, town or district…" autocomplete="off"
+            oninput="onLocationInput('p')" onkeydown="onLocationKey(event,'p')"/>
+          <div class="autocomplete-list" id="p-autocompleteList" style="display:none"></div>
+        </div>
+        <button class="btn-fetch" id="p-fetchBtn" onclick="fetchWeather('p')"><span>☁️</span> <span id="p-fetchBtnText">Fetch Weather</span></button>
+      </div>
+      <div class="status-msg" id="p-locationStatus"></div>
+      <div class="weather-pills">
+        <div class="weather-pill" id="p-pill-temp"><span>🌡️</span><span class="pill-label" id="p-pill-temp-label">Temperature</span><span class="pill-val" id="p-pill-temp-val">—</span></div>
+        
+      </div>
+    </div>
+
+    <!-- Soil + Predict -->
+    <div class="card">
+      <!-- Form-level error banner -->
+      <div class="form-error-banner" id="p-form-error">
+        <span id="p-form-error-msg"></span>
+      </div>
+      <!-- Weather missing warning -->
+      <div class="weather-warning" id="p-weather-warning">
+        ⚠️ <span id="p-weather-warning-msg">Please fetch temperature data first — click "Fetch Weather" above.</span>
+      </div>
+
+      <div class="section-label" id="p-sec-soil">From Soil Health Card</div>
+      <div class="field-grid">
+        <div class="field">
+          <label id="p-lbl-N">Nitrogen (N)</label>
+          <span class="hint" id="p-hint-N">kg/ha · 0–140</span>
+          <input type="number" id="p-N" placeholder="e.g. 90" step="any" oninput="clearFieldError('p-N')" onblur="validateSingleField('p','N')"/>
+          <div class="field-error" id="p-N-error"></div>
+        </div>
+        <div class="field">
+          <label id="p-lbl-P">Phosphorus (P)</label>
+          <span class="hint" id="p-hint-P">kg/ha · 0–150</span>
+          <input type="number" id="p-P" placeholder="e.g. 42" step="any" oninput="clearFieldError('p-P')" onblur="validateSingleField('p','P')"/>
+          <div class="field-error" id="p-P-error"></div>
+        </div>
+        <div class="field">
+          <label id="p-lbl-K">Potassium (K)</label>
+          <span class="hint" id="p-hint-K">kg/ha · 0–210</span>
+          <input type="number" id="p-K" placeholder="e.g. 43" step="any" oninput="clearFieldError('p-K')" onblur="validateSingleField('p','K')"/>
+          <div class="field-error" id="p-K-error"></div>
+        </div>
+        <div class="field">
+          <label id="p-lbl-ph">Soil pH</label>
+          <span class="hint" id="p-hint-ph">0–14 · typical 5.5–8</span>
+          <input type="number" id="p-ph" placeholder="e.g. 6.5" step="any" oninput="clearFieldError('p-ph')" onblur="validateSingleField('p','ph')"/>
+          <div class="field-error" id="p-ph-error"></div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="section-label" id="p-sec-climate">Auto-fetched Climate Data</div>
+      <div class="field-grid" style="margin-bottom:1.8rem">
+        <div class="field">
+          <label id="p-lbl-temp">Temperature (°C)</label>
+          <span class="hint" id="p-hint-temp">Auto-filled from weather API</span>
+          <input type="number" id="p-temperature" placeholder="Fetch location ↑" step="any" readonly/>
+        </div>
+        <div class="field">
+          <label id="p-lbl-hum">Humidity (%)</label>
+          <span class="hint" id="p-hint-hum">Enter manually (0–100)</span>
+          <input type="number" id="p-humidity" placeholder="e.g. 65" step="any" min="0" max="100" oninput="clearFieldError('p-humidity')" onblur="validateSingleField('p','humidity')"/>
+          <div class="field-error" id="p-humidity-error"></div>
+        </div>
+        <div class="field">
+          <label id="p-lbl-rain">Annual Rainfall (mm)</label>
+          <span class="hint" id="p-hint-rain">Your area's yearly average</span>
+          <input type="number" id="p-rainfall" placeholder="e.g. 800" step="any" oninput="clearFieldError('p-rainfall')" onblur="validateSingleField('p','rainfall')"/>
+          <div class="rainfall-note" id="p-rain-note">Enter your area's annual average in mm. Any value is fine — values are normalized for prediction.</div>
+          <div class="field-error" id="p-rainfall-error"></div>
+        </div>
+      </div>
+      <button class="btn-primary" id="p-predictBtn" onclick="runPredict()"><span>🌱</span> <span id="p-predictBtnText">Predict Best Crop</span></button>
+      <div id="predict-result"></div>
+    </div>
+  </div>
+
+  <!-- ══════════ TAB 2: YIELD QUERY ══════════ -->
+  <div class="tab-panel" id="tab-yield">
+    <div class="hero">
+      <h2 id="hero2-h2">Check yield for <em>your chosen crop</em></h2>
+      <p id="hero2-p">Already have a crop in mind? Enter it along with your field's soil and climate data — we'll tell you how good the yield is likely to be and what to watch out for.</p>
+    </div>
+
+    <div class="steps">
+      <div class="step active" id="y-step1"><div class="step-num">1</div> <span class="step-label">Location</span></div>
+      <div class="step-sep"></div>
+      <div class="step" id="y-step2"><div class="step-num">2</div> <span class="step-label">Crop & Soil</span></div>
+      <div class="step-sep"></div>
+      <div class="step" id="y-step3"><div class="step-num">3</div> <span class="step-label">Yield Report</span></div>
+    </div>
+
+    <!-- Location (yield tab) -->
+    <div class="card">
+      <div class="card-title" id="y-card-title">Your Location</div>
+      <div class="location-row">
+        <div class="location-input-wrap">
+          <span class="location-icon">📍</span>
+          <input type="text" id="y-locationInput" placeholder="Type your village, town or district…" autocomplete="off"
+            oninput="onLocationInput('y')" onkeydown="onLocationKey(event,'y')"/>
+          <div class="autocomplete-list" id="y-autocompleteList" style="display:none"></div>
+        </div>
+        <button class="btn-fetch" id="y-fetchBtn" onclick="fetchWeather('y')"><span>☁️</span> <span id="y-fetchBtnText">Fetch Weather</span></button>
+      </div>
+      <div class="status-msg" id="y-locationStatus"></div>
+      <div class="weather-pills">
+        <div class="weather-pill" id="y-pill-temp"><span>🌡️</span><span class="pill-label" id="y-pill-temp-label">Temperature</span><span class="pill-val" id="y-pill-temp-val">—</span></div>
+        
+      </div>
+    </div>
+
+    <!-- Crop + Soil -->
+    <div class="card">
+      <!-- Form-level error banner -->
+      <div class="form-error-banner" id="y-form-error">
+        <span id="y-form-error-msg"></span>
+      </div>
+      <!-- Weather warning -->
+      <div class="weather-warning" id="y-weather-warning">
+        ⚠️ <span id="y-weather-warning-msg">Please fetch temperature data first — click "Fetch Weather" above.</span>
+      </div>
+
+      <div class="section-label" id="y-sec-crop">Crop You Want to Grow</div>
+      <div class="field-grid" style="margin-bottom:1.4rem">
+        <div class="field" style="grid-column:1/-1">
+          <label id="y-lbl-crop">Crop Name</label>
+          <span class="hint" id="y-hint-crop">Type or pick from the list</span>
+          <div class="crop-input-wrap">
+            <input type="text" id="y-crop" placeholder="e.g. rice, maize, banana…" list="crop-list" autocomplete="off"
+              oninput="clearFieldError('y-crop')" onblur="validateCropField()"/>
+          </div>
+          <datalist id="crop-list">
+            <option value="apple"/><option value="banana"/><option value="blackgram"/>
+            <option value="chickpea"/><option value="coconut"/><option value="coffee"/>
+            <option value="cotton"/><option value="grapes"/><option value="jute"/>
+            <option value="kidneybeans"/><option value="lentil"/><option value="maize"/>
+            <option value="mango"/><option value="mothbeans"/><option value="mungbean"/>
+            <option value="muskmelon"/><option value="orange"/><option value="papaya"/>
+            <option value="pigeonpeas"/><option value="pomegranate"/><option value="rice"/>
+            <option value="watermelon"/>
+          </datalist>
+          <div class="field-error" id="y-crop-error"></div>
+        </div>
+      </div>
+
+      <div class="section-label" id="y-sec-soil">From Soil Health Card</div>
+      <div class="field-grid">
+        <div class="field">
+          <label id="y-lbl-N">Nitrogen (N)</label>
+          <span class="hint" id="y-hint-N">kg/ha · 0–140</span>
+          <input type="number" id="y-N" placeholder="e.g. 90" step="any" oninput="clearFieldError('y-N')" onblur="validateSingleField('y','N')"/>
+          <div class="field-error" id="y-N-error"></div>
+        </div>
+        <div class="field">
+          <label id="y-lbl-P">Phosphorus (P)</label>
+          <span class="hint" id="y-hint-P">kg/ha · 0–150</span>
+          <input type="number" id="y-P" placeholder="e.g. 42" step="any" oninput="clearFieldError('y-P')" onblur="validateSingleField('y','P')"/>
+          <div class="field-error" id="y-P-error"></div>
+        </div>
+        <div class="field">
+          <label id="y-lbl-K">Potassium (K)</label>
+          <span class="hint" id="y-hint-K">kg/ha · 0–210</span>
+          <input type="number" id="y-K" placeholder="e.g. 43" step="any" oninput="clearFieldError('y-K')" onblur="validateSingleField('y','K')"/>
+          <div class="field-error" id="y-K-error"></div>
+        </div>
+        <div class="field">
+          <label id="y-lbl-ph">Soil pH</label>
+          <span class="hint" id="y-hint-ph">0–14 · typical 5.5–8</span>
+          <input type="number" id="y-ph" placeholder="e.g. 6.5" step="any" oninput="clearFieldError('y-ph')" onblur="validateSingleField('y','ph')"/>
+          <div class="field-error" id="y-ph-error"></div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="section-label" id="y-sec-climate">Auto-fetched Climate Data</div>
+      <div class="field-grid" style="margin-bottom:1.8rem">
+        <div class="field">
+          <label id="y-lbl-temp">Temperature (°C)</label>
+          <span class="hint" id="y-hint-temp">Auto-filled from weather API</span>
+          <input type="number" id="y-temperature" placeholder="Fetch location ↑" step="any" readonly/>
+        </div>
+        <div class="field">
+          <label id="y-lbl-hum">Humidity (%)</label>
+          <span class="hint" id="y-hint-hum">Enter manually (0–100)</span>
+          <input type="number" id="y-humidity" placeholder="e.g. 65" step="any" min="0" max="100" oninput="clearFieldError('y-humidity')" onblur="validateSingleField('y','humidity')"/>
+          <div class="field-error" id="y-humidity-error"></div>
+        </div>
+        <div class="field">
+          <label id="y-lbl-rain">Annual Rainfall (mm)</label>
+          <span class="hint" id="y-hint-rain">Your area's yearly average</span>
+          <input type="number" id="y-rainfall" placeholder="e.g. 800" step="any" oninput="clearFieldError('y-rainfall')" onblur="validateSingleField('y','rainfall')"/>
+          <div class="rainfall-note" id="y-rain-note">Enter your area's annual average in mm. Any value is fine — values are normalized for prediction.</div>
+          <div class="field-error" id="y-rainfall-error"></div>
+        </div>
+      </div>
+      <button class="btn-primary" id="y-queryBtn" onclick="runYieldQuery()"><span>🔍</span> <span id="y-queryBtnText">Check Yield Outlook</span></button>
+      <div id="yield-result"></div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  /* ═══════════════════════════════════════════
+   *  STATE
+   * ═══════════════════════════════════════════ */
+  const cropEmoji = {
+    apple:'🍎',banana:'🍌',blackgram:'🫘',chickpea:'🫘',coconut:'🥥',
+    coffee:'☕',cotton:'🌿',grapes:'🍇',jute:'🌾',kidneybeans:'🫘',
+    lentil:'🫘',maize:'🌽',mango:'🥭',mothbeans:'🫘',mungbean:'🫘',
+    muskmelon:'🍈',orange:'🍊',papaya:'🍑',pigeonpeas:'🫘',
+    pomegranate:'🍎',rice:'🍚',watermelon:'🍉'
+  };
+
+  /* Realistic ideal soil condition ranges per crop (for alt-crop detail panels).
+     N/P/K in kg/ha (matching model training units), rainfall in mm, ph unitless. */
+  const CROP_IDEALS = {
+    rice:        {N:[30,60],  P:[15,30],  K:[15,30],  ph:[5.5,7.0], rain:[150,300]},
+    maize:       {N:[30,60],  P:[15,30],  K:[15,30],  ph:[5.5,7.5], rain:[60,120]},
+    chickpea:    {N:[10,30],  P:[20,40],  K:[10,20],  ph:[6.0,8.0], rain:[30,80]},
+    kidneybeans: {N:[10,30],  P:[30,50],  K:[10,20],  ph:[6.0,7.5], rain:[80,140]},
+    pigeonpeas:  {N:[10,20],  P:[20,40],  K:[10,20],  ph:[5.5,7.0], rain:[60,120]},
+    mothbeans:   {N:[5,15],   P:[10,25],  K:[10,20],  ph:[6.0,8.0], rain:[30,70]},
+    mungbean:    {N:[5,20],   P:[10,25],  K:[10,20],  ph:[6.0,7.5], rain:[60,100]},
+    blackgram:   {N:[10,20],  P:[20,35],  K:[10,20],  ph:[6.0,7.5], rain:[60,100]},
+    lentil:      {N:[10,20],  P:[20,40],  K:[10,20],  ph:[6.0,8.0], rain:[30,80]},
+    pomegranate: {N:[15,30],  P:[20,35],  K:[20,40],  ph:[5.5,7.5], rain:[50,100]},
+    banana:      {N:[40,70],  P:[30,50],  K:[50,100], ph:[5.5,7.0], rain:[100,200]},
+    mango:       {N:[10,30],  P:[10,25],  K:[15,30],  ph:[5.5,7.5], rain:[60,120]},
+    grapes:      {N:[10,30],  P:[20,40],  K:[20,40],  ph:[5.5,7.0], rain:[50,100]},
+    watermelon:  {N:[40,60],  P:[20,40],  K:[20,40],  ph:[6.0,7.5], rain:[40,80]},
+    muskmelon:   {N:[30,50],  P:[20,40],  K:[20,40],  ph:[6.0,7.5], rain:[30,60]},
+    apple:       {N:[10,30],  P:[30,50],  K:[20,40],  ph:[5.5,7.0], rain:[100,180]},
+    orange:      {N:[10,30],  P:[15,30],  K:[15,30],  ph:[6.0,7.5], rain:[100,180]},
+    papaya:      {N:[15,30],  P:[15,30],  K:[20,40],  ph:[6.0,7.5], rain:[100,200]},
+    coconut:     {N:[10,30],  P:[10,25],  K:[30,60],  ph:[5.5,8.0], rain:[100,250]},
+    cotton:      {N:[40,70],  P:[20,40],  K:[20,40],  ph:[6.0,8.0], rain:[60,100]},
+    jute:        {N:[30,50],  P:[15,30],  K:[15,30],  ph:[6.0,7.5], rain:[150,250]},
+    coffee:      {N:[30,50],  P:[20,40],  K:[20,40],  ph:[5.5,6.5], rain:[150,250]},
+  };
+
+  let selectedLang = 'English';
+  const loc = { p: null, y: null };
+  const weatherFetched = { p: false, y: false };
+  const acResults = { p: [], y: [] };
+  let debounceTimers = { p: null, y: null };
+  let selIdx = { p: -1, y: -1 };
+
+  /* ═══════════════════════════════════════════
+   *  UI STRINGS (all languages)
+   * ═══════════════════════════════════════════ */
+  const UI_STRINGS = {
+    English: {
+      langLabel: '🌐 Language',
+      tab_predict: '🌱 Predict Best Crop',
+      tab_yield:   '🔍 Yield Query',
+      hero1_h2:    'Find the <em>perfect crop</em> for your field',
+      hero1_p:     "Type your village or district — we'll auto-fetch the weather. Add your soil values and get a recommendation with explanation in your language.",
+      hero2_h2:    'Check yield for <em>your chosen crop</em>',
+      hero2_p:     "Already have a crop in mind? Enter it along with your field's soil and climate data — we'll tell you how good the yield is likely to be and what to watch out for.",
+      step_location: 'Location', step_soil: 'Soil Values', step_result: 'Result',
+      step_crop: 'Crop & Soil', step_yield_result: 'Yield Report',
+      card_location: 'Your Location',
+      loc_placeholder: 'Type your village, town or district…',
+      btn_fetch_weather: 'Fetch Weather',
+      pill_temp: 'Temperature', pill_hum: 'Humidity',
+      sec_soil: 'From Soil Health Card',
+      sec_climate: 'Auto-fetched Climate Data',
+      lbl_N: 'Nitrogen (N)', hint_N: 'kg/ha · 0–140', ph_N: 'e.g. 90',
+      lbl_P: 'Phosphorus (P)', hint_P: 'kg/ha · 0–150', ph_P: 'e.g. 42',
+      lbl_K: 'Potassium (K)', hint_K: 'kg/ha · 0–210', ph_K: 'e.g. 43',
+      lbl_ph: 'Soil pH', hint_ph: '0–14 · typical 5.5–8', ph_ph: 'e.g. 6.5',
+      lbl_temp: 'Temperature (°C)', hint_temp: 'Auto-filled from weather API', ph_temp: 'Fetch location ↑',
+      lbl_hum: 'Humidity (%)', hint_hum: 'Enter manually (0–100)', ph_hum: 'e.g. 65',
+      lbl_rain: 'Annual Rainfall (mm)', hint_rain: "Your area's yearly average", ph_rain: 'e.g. 800',
+      rain_note: "Enter your area's annual average in mm. Any value is fine — values are normalized for prediction.",
+      btn_predict: 'Predict Best Crop',
+      sec_crop: 'Crop You Want to Grow',
+      lbl_crop: 'Crop Name', hint_crop: 'Type or pick from the list', ph_crop: 'e.g. rice, maize, banana…',
+      btn_yield: 'Check Yield Outlook',
+      fert_title: '🧪 Fertilizer & Soil Amendment Guide',
+      fert_disclaimer: 'General guidance only — based on typical soil thresholds. Please consult a local agricultural expert for precise recommendations.',
+      fert_good: 'Good', fert_low: 'Low — Apply Fertilizer',
+      fert_excess: 'Excess — Skip Fertilizing', fert_high: 'Too High — Amend Soil',
+      err_N: 'Please enter a valid Nitrogen (N) value (0–140 kg/ha).',
+      err_P: 'Please enter a valid Phosphorus (P) value (0–150 kg/ha).',
+      err_K: 'Please enter a valid Potassium (K) value (0–210 kg/ha).',
+      err_ph: 'Please enter a valid Soil pH (0–14).',
+      err_weather: 'Please fetch temperature data first (click "Fetch Weather" above).',
+      err_rainfall: 'Please enter your annual average rainfall in mm (e.g. 800 for most Indian regions).',
+      err_crop: 'Please enter the crop name you want to grow.',
+      weather_warning: 'Please fetch temperature data first — click "Fetch Weather" above.',
+      status_searching: 'Searching for location…', status_not_found: 'Location not found. Try a nearby town or district.',
+      status_loc_fail: 'Could not search location.', status_fetching: 'Fetching weather for',
+      status_fetched: '✅ Weather fetched for', status_weather_fail: 'Could not fetch weather. Check your internet.',
+      loading_analyzing: 'Analyzing…', loading_checking: 'Checking…',
+      lbl_recommended: 'Recommended Crop', lbl_why: '💡 Why this crop?',
+      lbl_yield_for: 'Yield Outlook For', lbl_yield_analysis: '📋 Yield Analysis',
+      lbl_match: 'How well your conditions match',
+      lbl_best_crop: 'Best crop for your field right now',
+      lbl_your_value: 'Your value', lbl_ideal_for: 'Ideal for',
+      lbl_calculating: 'Calculating…',
+      lbl_generating: 'Generating report in',
+      fert_excess_note_tpl: 'Excess {n} can harm the crop. Avoid nitrogen-heavy fertilizers this season and let levels deplete naturally.',
+      lbl_dose: 'Dose', lbl_timing: 'Timing', lbl_method: 'Method',
+      not_in_training: 'not in training data — analysis is based on general knowledge.',
+      unknown_note_pre: '⚠️ "',
+      conf_high_label: '✅ High confidence',
+      conf_mid_label:  '⚠️ Moderate confidence',
+      conf_low_label:  '⚠ Low confidence',
+      conf_high_explain: 'Strong match — your field conditions align well with this crop.',
+      conf_mid_explain: 'Reasonable match — most conditions suit this crop, a few may need attention.',
+      conf_low_explain: 'Partial match — consider the alternatives below before deciding.',
+      alt_title: 'Best Alternative Crops',
+      alt_ideals_title: 'Typical ideal conditions for',
+      alt_expert_note: 'Typical ranges only. Consult a local expert before changing crops.',
+      optimal_badge: '✅ Optimal Choice',
+      optimal_msg: 'This crop is suitable and optimal to sow under your current conditions. No better alternative was found.',
+      not_optimal_badge: '⚠️ Better Alternatives Available',
+      not_optimal_msg: 'Your selected crop is not the best match for your current conditions. Consider the alternatives below.',
+      compare_title: '📊 Crop Comparison',
+      compare_your_crop: 'Your Crop',
+      compare_suitability: 'Suitability Score',
+      compare_best: 'Best Match',
+      compare_note: 'Higher score = better match for your field conditions.',
+      landing_h2: 'Welcome to <em>CropSense</em>',
+      landing_p: 'Your AI-powered crop advisor. What would you like to do today?',
+      lc_predict_title: 'Crop Recommendation',
+      lc_predict_desc: "Don't know what to grow? Enter your soil & location — we'll recommend the best crop for your field with a full explanation.",
+      lc_predict_cta: 'Get Recommendation',
+      lc_yield_title: 'Yield Query',
+      lc_yield_desc: 'Already have a crop in mind? Check how suitable it is for your field conditions and get a yield outlook.',
+      lc_yield_cta: 'Check Yield',
+      back_home: 'Home',
+    },
+    Hindi: {
+      langLabel: '🌐 भाषा',
+      tab_predict: '🌱 सर्वश्रेष्ठ फसल चुनें',
+      tab_yield:   '🔍 उपज जाँच',
+      hero1_h2:    'अपने खेत के लिए <em>सही फसल</em> खोजें',
+      hero1_p:     'अपना गाँव या जिला टाइप करें — हम मौसम डेटा स्वचालित रूप से लाएँगे। मिट्टी के मान दर्ज करें और अपनी भाषा में अनुशंसा प्राप्त करें।',
+      hero2_h2:    'अपनी <em>चुनी हुई फसल</em> की उपज जाँचें',
+      hero2_p:     'क्या आपके मन में पहले से फसल है? उसे मिट्टी और जलवायु डेटा के साथ दर्ज करें — हम बताएंगे कि उपज कैसी होगी।',
+      step_location: 'स्थान', step_soil: 'मिट्टी के मान', step_result: 'परिणाम',
+      step_crop: 'फसल और मिट्टी', step_yield_result: 'उपज रिपोर्ट',
+      card_location: 'आपका स्थान',
+      loc_placeholder: 'गाँव, शहर या जिला टाइप करें…',
+      btn_fetch_weather: 'मौसम लाएँ',
+      pill_temp: 'तापमान', pill_hum: 'आर्द्रता',
+      sec_soil: 'मृदा स्वास्थ्य कार्ड से',
+      sec_climate: 'स्वत: प्राप्त जलवायु डेटा',
+      lbl_N: 'नाइट्रोजन (N)', hint_N: 'किग्रा/हेक्टेयर · 0–140', ph_N: 'जैसे 90',
+      lbl_P: 'फास्फोरस (P)', hint_P: 'किग्रा/हेक्टेयर · 0–150', ph_P: 'जैसे 42',
+      lbl_K: 'पोटेशियम (K)', hint_K: 'किग्रा/हेक्टेयर · 0–210', ph_K: 'जैसे 43',
+      lbl_ph: 'मिट्टी pH', hint_ph: '0–14 · सामान्य 5.5–8', ph_ph: 'जैसे 6.5',
+      lbl_temp: 'तापमान (°C)', hint_temp: 'मौसम API से स्वत: भरा', ph_temp: 'स्थान लाएँ ↑',
+      lbl_hum: 'आर्द्रता (%)', hint_hum: 'स्वयं दर्ज करें (0–100)', ph_hum: 'e.g. 65',
+      lbl_rain: 'वार्षिक वर्षा (मिमी)', hint_rain: 'आपके क्षेत्र का वार्षिक औसत', ph_rain: 'जैसे 800',
+      rain_note: 'अपने क्षेत्र का वार्षिक औसत मिमी में दर्ज करें। कोई भी मान ठीक है — मान स्वत: समायोजित होते हैं।',
+      btn_predict: 'सर्वश्रेष्ठ फसल चुनें',
+      sec_crop: 'जो फसल आप उगाना चाहते हैं',
+      lbl_crop: 'फसल का नाम', hint_crop: 'टाइप करें या सूची से चुनें', ph_crop: 'जैसे चावल, मक्का, केला…',
+      btn_yield: 'उपज दृष्टिकोण जाँचें',
+      fert_title: '🧪 उर्वरक और मिट्टी सुधार मार्गदर्शिका',
+      fert_disclaimer: 'सामान्य मार्गदर्शन केवल — सामान्य मिट्टी सीमाओं पर आधारित। सटीक सुझाव के लिए स्थानीय कृषि विशेषज्ञ से मिलें।',
+      fert_good: 'अच्छा', fert_low: 'कम — उर्वरक लगाएँ',
+      fert_excess: 'अधिक — उर्वरक न डालें', fert_high: 'बहुत अधिक — मिट्टी सुधारें',
+      err_N: 'कृपया नाइट्रोजन (N) मान दर्ज करें (0–140 किग्रा/हेक्टेयर)।',
+      err_P: 'कृपया फास्फोरस (P) मान दर्ज करें (0–150 किग्रा/हेक्टेयर)।',
+      err_K: 'कृपया पोटेशियम (K) मान दर्ज करें (0–210 किग्रा/हेक्टेयर)।',
+      err_ph: 'कृपया मिट्टी pH दर्ज करें (0–14)।',
+      err_weather: 'पहले तापमान डेटा लाएँ ("मौसम लाएँ" बटन दबाएँ)।',
+      err_rainfall: 'कृपया अपने क्षेत्र की वार्षिक औसत वर्षा (मिमी) दर्ज करें।',
+      err_crop: 'कृपया उगाने वाली फसल का नाम दर्ज करें।',
+      weather_warning: 'पहले तापमान डेटा लाएँ — "मौसम लाएँ" बटन दबाएँ।',
+      status_searching: 'स्थान खोजा जा रहा है…', status_not_found: 'स्थान नहीं मिला। पास के कस्बे या जिले का प्रयास करें।',
+      status_loc_fail: 'स्थान खोजने में विफल।', status_fetching: 'मौसम लाया जा रहा है',
+      status_fetched: '✅ मौसम मिला', status_weather_fail: 'मौसम नहीं आया। इंटरनेट जाँचें।',
+      loading_analyzing: 'विश्लेषण हो रहा है…', loading_checking: 'जाँच हो रही है…',
+      lbl_recommended: 'अनुशंसित फसल', lbl_why: '💡 यह फसल क्यों?',
+      lbl_yield_for: 'उपज दृष्टिकोण', lbl_yield_analysis: '📋 उपज विश्लेषण',
+      lbl_match: 'आपकी परिस्थितियाँ कितनी मेल खाती हैं',
+      lbl_best_crop: 'अभी आपके खेत के लिए सबसे अच्छी फसल',
+      lbl_your_value: 'आपका मान', lbl_ideal_for: 'के लिए आदर्श',
+      lbl_calculating: 'गणना हो रही है…',
+      lbl_generating: 'रिपोर्ट तैयार हो रही है',
+      fert_excess_note_tpl: 'अधिक {n} फसल को नुकसान पहुँचा सकता है। इस मौसम में नाइट्रोजन उर्वरक से बचें।',
+      lbl_dose: 'खुराक', lbl_timing: 'समय', lbl_method: 'तरीका',
+      not_in_training: 'प्रशिक्षण डेटा में नहीं है — विश्लेषण सामान्य ज्ञान पर आधारित है।',
+      unknown_note_pre: '⚠️ "',
+      conf_high_label: '✅ उच्च विश्वास', conf_mid_label: '⚠️ मध्यम विश्वास', conf_low_label: '⚠ कम विश्वास',
+      conf_high_explain: 'मजबूत मिलान — आपके खेत की स्थितियाँ इस फसल के लिए अच्छी तरह अनुकूल हैं।',
+      conf_mid_explain: 'उचित मिलान — अधिकांश स्थितियाँ ठीक हैं, कुछ पर ध्यान देना होगा।',
+      conf_low_explain: 'आंशिक मिलान — नीचे दिए विकल्पों पर भी विचार करें।',
+      alt_title: 'सर्वश्रेष्ठ वैकल्पिक फसलें',
+      alt_ideals_title: 'के लिए आदर्श परिस्थितियाँ',
+      alt_expert_note: 'ये केवल सामान्य श्रेणियाँ हैं। फसल बदलने से पहले स्थानीय विशेषज्ञ से मिलें।',
+      optimal_badge: '✅ सर्वश्रेष्ठ विकल्प',
+      optimal_msg: 'यह फसल आपकी वर्तमान परिस्थितियों में बोने के लिए उपयुक्त और सर्वोत्तम है। इससे बेहतर कोई विकल्प नहीं मिला।',
+      not_optimal_badge: '⚠️ बेहतर विकल्प उपलब्ध हैं',
+      not_optimal_msg: 'आपकी चुनी हुई फसल आपकी वर्तमान परिस्थितियों के लिए सबसे अच्छी नहीं है। नीचे दिए विकल्पों पर विचार करें।',
+      compare_title: '📊 फसल तुलना',
+      compare_your_crop: 'आपकी फसल',
+      compare_suitability: 'उपयुक्तता स्कोर',
+      compare_best: 'सर्वश्रेष्ठ मिलान',
+      compare_note: 'अधिक स्कोर = आपके खेत की परिस्थितियों के लिए बेहतर मिलान।',
+      landing_h2: '<em>CropSense</em> में आपका स्वागत है',
+      landing_p: 'आपका AI फसल सलाहकार। आज आप क्या करना चाहते हैं?',
+      lc_predict_title: 'फसल सिफारिश',
+      lc_predict_desc: 'नहीं जानते क्या उगाएँ? मिट्टी और स्थान दर्ज करें — हम आपके खेत के लिए सबसे अच्छी फसल बताएंगे।',
+      lc_predict_cta: 'सिफारिश पाएँ',
+      lc_yield_title: 'उपज जाँच',
+      lc_yield_desc: 'पहले से फसल तय है? देखें यह आपके खेत के लिए कितनी उपयुक्त है।',
+      lc_yield_cta: 'उपज जाँचें',
+      back_home: 'होम',
+    },
+    Telugu: {
+      langLabel: '🌐 భాష',
+      tab_predict: '🌱 ఉత్తమ పంట అంచనా',
+      tab_yield:   '🔍 దిగుబడి విచారణ',
+      hero1_h2:    'మీ పొలానికి <em>సరైన పంట</em> కనుగొనండి',
+      hero1_p:     'మీ గ్రామం లేదా జిల్లా టైప్ చేయండి — వాతావరణ డేటా స్వయంచాలకంగా తీసుకుంటాం. నేల విలువలు నమోదు చేసి మీ భాషలో సిఫారసు పొందండి.',
+      hero2_h2:    'మీ <em>ఎంపిక చేసిన పంట</em> దిగుబడి తనిఖీ చేయండి',
+      hero2_p:     'ఇప్పటికే పంట మనసులో ఉందా? నేల మరియు వాతావరణ డేటాతో నమోదు చేయండి — దిగుబడి ఎంత ఉంటుందో చెప్తాం.',
+      step_location: 'స్థానం', step_soil: 'నేల విలువలు', step_result: 'ఫలితం',
+      step_crop: 'పంట & నేల', step_yield_result: 'దిగుబడి నివేదిక',
+      card_location: 'మీ స్థానం',
+      loc_placeholder: 'గ్రామం, పట్టణం లేదా జిల్లా టైప్ చేయండి…',
+      btn_fetch_weather: 'వాతావరణం తీసుకురండి',
+      pill_temp: 'ఉష్ణోగ్రత', pill_hum: 'తేమ',
+      sec_soil: 'నేల ఆరోగ్య కార్డు నుండి',
+      sec_climate: 'స్వయంచాలకంగా తీసిన వాతావరణ డేటా',
+      lbl_N: 'నత్రజని (N)', hint_N: 'కి.గ్రా/హెక్టా · 0–140', ph_N: 'ఉదా: 90',
+      lbl_P: 'భాస్వరం (P)', hint_P: 'కి.గ్రా/హెక్టా · 0–150', ph_P: 'ఉదా: 42',
+      lbl_K: 'పొటాషియం (K)', hint_K: 'కి.గ్రా/హెక్టా · 0–210', ph_K: 'ఉదా: 43',
+      lbl_ph: 'నేల pH', hint_ph: '0–14 · సాధారణం 5.5–8', ph_ph: 'ఉదా: 6.5',
+      lbl_temp: 'ఉష్ణోగ్రత (°C)', hint_temp: 'వాతావరణ API నుండి స్వయంచాలకంగా', ph_temp: 'స్థానం తీసుకురండి ↑',
+      lbl_hum: 'తేమ (%)', hint_hum: 'స్వయంగా నమోదు చేయండి (0–100)', ph_hum: 'e.g. 65',
+      lbl_rain: 'వార్షిక వర్షపాతం (మి.మీ)', hint_rain: 'మీ ప్రాంత వార్షిక సగటు', ph_rain: 'ఉదా: 800',
+      rain_note: 'మీ ప్రాంత వార్షిక సగటు మి.మీలో నమోదు చేయండి. ఏ విలువైనా సరే — స్వయంచాలకంగా సర్దుబాటు అవుతుంది.',
+      btn_predict: 'ఉత్తమ పంట అంచనా వేయండి',
+      sec_crop: 'మీరు పెంచాలనుకునే పంట',
+      lbl_crop: 'పంట పేరు', hint_crop: 'టైప్ చేయండి లేదా జాబితా నుండి ఎంచుకోండి', ph_crop: 'ఉదా: వరి, మొక్కజొన్న, అరటి…',
+      btn_yield: 'దిగుబడి అంచనా తనిఖీ చేయండి',
+      fert_title: '🧪 ఎరువులు & నేల సవరణ మార్గదర్శి',
+      fert_disclaimer: 'సాధారణ మార్గదర్శకత్వం మాత్రమే. ఖచ్చితమైన సిఫారసుల కోసం స్థానిక వ్యవసాయ నిపుణుడిని సంప్రదించండి.',
+      fert_good: 'బాగుంది', fert_low: 'తక్కువ — ఎరువు వేయండి',
+      fert_excess: 'అధికం — ఎరువు వేయవద్దు', fert_high: 'చాలా ఎక్కువ — నేల సరిచేయండి',
+      err_N: 'దయచేసి నత్రజని (N) విలువ నమోదు చేయండి (0–140 కి.గ్రా/హెక్టా).',
+      err_P: 'దయచేసి భాస్వరం (P) విలువ నమోదు చేయండి (0–150 కి.గ్రా/హెక్టా).',
+      err_K: 'దయచేసి పొటాషియం (K) విలువ నమోదు చేయండి (0–210 కి.గ్రా/హెక్టా).',
+      err_ph: 'దయచేసి నేల pH నమోదు చేయండి (0–14).',
+      err_weather: 'దయచేసి ముందు ఉష్ణోగ్రత డేటా తీసుకురండి.',
+      err_rainfall: 'దయచేసి మీ ప్రాంత వార్షిక సగటు వర్షపాతం (మి.మీ) నమోదు చేయండి.',
+      err_crop: 'దయచేసి పెంచాలనుకునే పంట పేరు నమోదు చేయండి.',
+      weather_warning: 'దయచేసి ముందు వాతావరణ (ఉష్ణోగ్రత) డేటా తీసుకురండి.',
+      status_searching: 'స్థానం వెతుకుతున్నాం…', status_not_found: 'స్థానం కనుగొనబడలేదు. సమీప పట్టణం లేదా జిల్లా ప్రయత్నించండి.',
+      status_loc_fail: 'స్థానం వెతకలేకపోయాం.', status_fetching: 'వాతావరణం తీసుకుంటున్నాం',
+      status_fetched: '✅ వాతావరణం వచ్చింది', status_weather_fail: 'వాతావరణం రాలేదు. ఇంటర్నెట్ తనిఖీ చేయండి.',
+      loading_analyzing: 'విశ్లేషిస్తున్నాం…', loading_checking: 'తనిఖీ చేస్తున్నాం…',
+      lbl_recommended: 'సిఫారసు చేసిన పంట', lbl_why: '💡 ఈ పంట ఎందుకు?',
+      lbl_yield_for: 'దిగుబడి అంచనా', lbl_yield_analysis: '📋 దిగుబడి విశ్లేషణ',
+      lbl_match: 'మీ పరిస్థితులు ఎంత సరిపోతున్నాయి',
+      lbl_best_crop: 'ఇప్పుడు మీ పొలానికి ఉత్తమ పంట',
+      lbl_your_value: 'మీ విలువ', lbl_ideal_for: 'కు అనువైనది',
+      lbl_calculating: 'లెక్కిస్తున్నాం…',
+      lbl_generating: 'నివేదిక తయారవుతోంది',
+      fert_excess_note_tpl: 'అధిక {n} పంటకు హాని చేయవచ్చు. ఈ సీజన్‌లో నత్రజని ఎరువులు వేయకండి.',
+      lbl_dose: 'మోతాదు', lbl_timing: 'సమయం', lbl_method: 'పద్ధతి',
+      not_in_training: 'శిక్షణ డేటాలో లేదు — విశ్లేషణ సాధారణ జ్ఞానంపై ఆధారపడింది.',
+      unknown_note_pre: '⚠️ "',
+      conf_high_label: '✅ అధిక విశ్వాసం', conf_mid_label: '⚠️ మధ్యస్థ విశ్వాసం', conf_low_label: '⚠ తక్కువ విశ్వాసం',
+      conf_high_explain: 'మంచి సరిపోలిక — మీ నేల పరిస్థితులు ఈ పంటకు అనుకూలంగా ఉన్నాయి.',
+      conf_mid_explain: 'సాధారణ సరిపోలిక — చాలా పరిస్థితులు అనుకూలంగా ఉన్నాయి, కొన్నింటిపై శ్రద్ధ అవసరం.',
+      conf_low_explain: 'పాక్షిక సరిపోలిక — దిగువ ప్రత్యామ్నాయాలు కూడా పరిశీలించండి.',
+      alt_title: 'ఉత్తమ ప్రత్యామ్నాయ పంటలు',
+      alt_ideals_title: 'కు అనువైన పరిస్థితులు',
+      alt_expert_note: 'సాధారణ శ్రేణులు మాత్రమే. పంట మార్చే ముందు స్థానిక నిపుణుడిని సంప్రదించండి.',
+      optimal_badge: '✅ అత్యుత్తమ ఎంపిక',
+      optimal_msg: 'ఈ పంట మీ ప్రస్తుత పరిస్థితులలో విత్తడానికి అనుకూలంగా మరియు అత్యుత్తమంగా ఉంది. దీనికంటే మెరుగైన ప్రత్యామ్నాయం కనుగొనబడలేదు.',
+      not_optimal_badge: '⚠️ మెరుగైన ప్రత్యామ్నాయాలు అందుబాటులో ఉన్నాయి',
+      not_optimal_msg: 'మీరు ఎంచుకున్న పంట మీ ప్రస్తుత పరిస్థితులకు అత్యుత్తమ మిలాయింపు కాదు. దిగువ ప్రత్యామ్నాయాలను పరిశీలించండి.',
+      compare_title: '📊 పంట పోలిక',
+      compare_your_crop: 'మీ పంట',
+      compare_suitability: 'అనుకూలత స్కోరు',
+      compare_best: 'అత్యుత్తమ మిలాయింపు',
+      compare_note: 'అధిక స్కోరు = మీ పొలం పరిస్థితులకు మెరుగైన మిలాయింపు.',
+      landing_h2: '<em>CropSense</em>కు స్వాగతం',
+      landing_p: 'మీ AI పంట సలహాదారు. ఈరోజు మీరు ఏమి చేయాలనుకుంటున్నారు?',
+      lc_predict_title: 'పంట సిఫారసు',
+      lc_predict_desc: 'ఏ పంట పెంచాలో తెలియదా? మీ నేల & స్థానం నమోదు చేయండి — మీ పొలానికి ఉత్తమ పంటను సూచిస్తాం.',
+      lc_predict_cta: 'సిఫారసు పొందండి',
+      lc_yield_title: 'దిగుబడి విచారణ',
+      lc_yield_desc: 'పంట ఇప్పటికే మనసులో ఉందా? మీ పొలం పరిస్థితులకు ఎంత అనుకూలమో తనిఖీ చేయండి.',
+      lc_yield_cta: 'దిగుబడి తనిఖీ చేయండి',
+      back_home: 'హోమ్',
+    },
+  };
+
+  /* Partially-translated languages: English base + language-specific overrides */
+  const PARTIAL = {
+    Tamil:   { langLabel:'🌐 மொழி', tab_predict:'🌱 சிறந்த பயிர் கணிப்பு', tab_yield:'🔍 மகசூல் விசாரணை', btn_predict:'சிறந்த பயிரை கணிக்கவும்', btn_yield:'மகசூல் கணிப்பை சரிபாருங்கள்', btn_fetch_weather:'வானிலை கொண்டுவா', lbl_recommended:'பரிந்துரைக்கப்பட்ட பயிர்', fert_title:'🧪 உர & மண் திருத்த வழிகாட்டி', fert_disclaimer:'பொது வழிகாட்டல் மட்டும். துல்லியமான பரிந்துரைகளுக்கு உள்ளூர் வல்லுநரை அணுகுங்கள்.',
+      optimal_badge:'✅ சிறந்த தேர்வு', optimal_msg:'இந்த பயிர் உங்கள் தற்போதைய நிலைமைகளில் விதைக்க ஏற்றதும் சிறந்ததுமாக உள்ளது.',
+      not_optimal_badge:'⚠️ சிறந்த மாற்றுகள் உள்ளன', not_optimal_msg:'உங்கள் தேர்ந்தெடுத்த பயிர் உங்கள் நிலைமைகளுக்கு சிறந்த பொருத்தமல்ல. கீழே உள்ள மாற்றுகளை பரிசீலிக்கவும்.',
+      compare_title:'📊 பயிர் ஒப்பீடு', compare_your_crop:'உங்கள் பயிர்', compare_suitability:'பொருத்தம் மதிப்பெண்', compare_best:'சிறந்த பொருத்தம்', compare_note:'அதிக மதிப்பெண் = உங்கள் நிலைக்கு சிறந்த பொருத்தம்.' },
+    Kannada: { langLabel:'🌐 ಭಾಷೆ', tab_predict:'🌱 ಅತ್ಯುತ್ತಮ ಬೆಳೆ ಊಹೆ', tab_yield:'🔍 ಇಳುವರಿ ವಿಚಾರಣೆ', btn_predict:'ಅತ್ಯುತ್ತಮ ಬೆಳೆ ಊಹಿಸಿ', btn_yield:'ಇಳುವರಿ ಅಂದಾಜು ಪರಿಶೀಲಿಸಿ', btn_fetch_weather:'ಹವಾಮಾನ ತರಿ', lbl_recommended:'ಶಿಫಾರಸು ಮಾಡಿದ ಬೆಳೆ', fert_title:'🧪 ಗೊಬ್ಬರ & ಮಣ್ಣು ತಿದ್ದುಪಡಿ ಮಾರ್ಗದರ್ಶಿ', fert_disclaimer:'ಸಾಮಾನ್ಯ ಮಾರ್ಗದರ್ಶನ ಮಾತ್ರ. ನಿಖರ ಸಲಹೆಗಾಗಿ ಸ್ಥಳೀಯ ತಜ್ಞರನ್ನು ಸಂಪರ್ಕಿಸಿ.',
+      optimal_badge:'✅ ಅತ್ಯುತ್ತಮ ಆಯ್ಕೆ', optimal_msg:'ಈ ಬೆಳೆ ನಿಮ್ಮ ಪ್ರಸ್ತುತ ಪರಿಸ್ಥಿತಿಗಳಲ್ಲಿ ಬಿತ್ತಲು ಸೂಕ್ತ ಮತ್ತು ಅತ್ಯುತ್ತಮವಾಗಿದೆ.',
+      not_optimal_badge:'⚠️ ಉತ್ತಮ ಪರ್ಯಾಯಗಳು ಲಭ್ಯ', not_optimal_msg:'ನಿಮ್ಮ ಆಯ್ಕೆ ಮಾಡಿದ ಬೆಳೆ ಪ್ರಸ್ತುತ ಪರಿಸ್ಥಿತಿಗಳಿಗೆ ಅತ್ಯುತ್ತಮ ಹೊಂದಾಣಿಕೆ ಅಲ್ಲ. ಕೆಳಗಿನ ಪರ್ಯಾಯಗಳನ್ನು ಪರಿಗಣಿಸಿ.',
+      compare_title:'📊 ಬೆಳೆ ಹೋಲಿಕೆ', compare_your_crop:'ನಿಮ್ಮ ಬೆಳೆ', compare_suitability:'ಸೂಕ್ತತೆ ಅಂಕ', compare_best:'ಅತ್ಯುತ್ತಮ ಹೊಂದಾಣಿಕೆ', compare_note:'ಹೆಚ್ಚು ಅಂಕ = ನಿಮ್ಮ ಪರಿಸ್ಥಿತಿಗೆ ಉತ್ತಮ ಹೊಂದಾಣಿಕೆ.' },
+    Marathi: { langLabel:'🌐 भाषा', tab_predict:'🌱 सर्वोत्तम पीक अंदाज', tab_yield:'🔍 उत्पादन चौकशी', btn_predict:'सर्वोत्तम पीक सुचवा', btn_yield:'उत्पादन दृष्टिकोन तपासा', btn_fetch_weather:'हवामान आणा', lbl_recommended:'शिफारस केलेले पीक', fert_title:'🧪 खत आणि माती सुधारणा मार्गदर्शिका', fert_disclaimer:'केवळ सामान्य मार्गदर्शन. अचूक सुझाव साठी स्थानिक तज्ञाशी संपर्क साधा.',
+      optimal_badge:'✅ सर्वोत्तम निवड', optimal_msg:'हे पीक तुमच्या सध्याच्या परिस्थितीत पेरण्यासाठी योग्य आणि सर्वोत्तम आहे.',
+      not_optimal_badge:'⚠️ चांगले पर्याय उपलब्ध', not_optimal_msg:'तुम्ही निवडलेले पीक सध्याच्या परिस्थितीसाठी सर्वोत्तम नाही. खाली दिलेले पर्याय पहा.',
+      compare_title:'📊 पीक तुलना', compare_your_crop:'तुमचे पीक', compare_suitability:'उपयुक्तता गुण', compare_best:'सर्वोत्तम जुळणी', compare_note:'जास्त गुण = तुमच्या शेतासाठी उत्तम जुळणी.' },
+    Bengali: { langLabel:'🌐 ভাষা', tab_predict:'🌱 সেরা ফসল অনুমান', tab_yield:'🔍 ফলন অনুসন্ধান', btn_predict:'সেরা ফসল সুপারিশ', btn_yield:'ফলন সম্ভাবনা দেখুন', btn_fetch_weather:'আবহাওয়া আনুন', lbl_recommended:'প্রস্তাবিত ফসল', fert_title:'🧪 সার ও মাটি সংশোধন গাইড', fert_disclaimer:'শুধুমাত্র সাধারণ নির্দেশনা। সঠিক পরামর্শের জন্য স্থানীয় বিশেষজ্ঞের সাথে যোগাযোগ করুন।',
+      optimal_badge:'✅ সর্বোত্তম পছন্দ', optimal_msg:'এই ফসল আপনার বর্তমান পরিস্থিতিতে বপনের জন্য উপযুক্ত এবং সর্বোত্তম।',
+      not_optimal_badge:'⚠️ ভালো বিকল্প পাওয়া গেছে', not_optimal_msg:'আপনার নির্বাচিত ফসল বর্তমান পরিস্থিতির জন্য সেরা নয়। নিচের বিকল্পগুলি বিবেচনা করুন।',
+      compare_title:'📊 ফসল তুলনা', compare_your_crop:'আপনার ফসল', compare_suitability:'উপযুক্ততা স্কোর', compare_best:'সেরা মিল', compare_note:'বেশি স্কোর = আপনার জমির জন্য ভালো মিল।' },
+    Punjabi: { langLabel:'🌐 ਭਾਸ਼ਾ', tab_predict:'🌱 ਸਭ ਤੋਂ ਵਧੀਆ ਫਸਲ ਅੰਦਾਜ਼ਾ', tab_yield:'🔍 ਝਾੜ ਪੁੱਛਗਿੱਛ', btn_predict:'ਸਭ ਤੋਂ ਵਧੀਆ ਫਸਲ ਦੱਸੋ', btn_yield:'ਝਾੜ ਅਨੁਮਾਨ ਦੇਖੋ', btn_fetch_weather:'ਮੌਸਮ ਲਿਆਓ', lbl_recommended:'ਸਿਫਾਰਸ਼ ਕੀਤੀ ਫਸਲ', fert_title:'🧪 ਖਾਦ ਅਤੇ ਮਿੱਟੀ ਸੁਧਾਰ ਮਾਰਗਦਰਸ਼ਿਕਾ', fert_disclaimer:'ਸਿਰਫ਼ ਆਮ ਮਾਰਗਦਰਸ਼ਨ। ਸਹੀ ਸਲਾਹ ਲਈ ਸਥਾਨਕ ਮਾਹਰ ਨਾਲ ਸੰਪਰਕ ਕਰੋ।',
+      optimal_badge:'✅ ਸਰਵੋਤਮ ਚੋਣ', optimal_msg:'ਇਹ ਫਸਲ ਤੁਹਾਡੀਆਂ ਮੌਜੂਦਾ ਹਾਲਤਾਂ ਵਿੱਚ ਬੀਜਣ ਲਈ ਢੁਕਵੀਂ ਅਤੇ ਸਰਵੋਤਮ ਹੈ।',
+      not_optimal_badge:'⚠️ ਬਿਹਤਰ ਵਿਕਲਪ ਉਪਲਬਧ', not_optimal_msg:'ਤੁਹਾਡੀ ਚੁਣੀ ਫਸਲ ਮੌਜੂਦਾ ਹਾਲਤਾਂ ਲਈ ਸਰਵੋਤਮ ਨਹੀਂ। ਹੇਠ ਦਿੱਤੇ ਵਿਕਲਪ ਵੇਖੋ।',
+      compare_title:'📊 ਫਸਲ ਤੁਲਨਾ', compare_your_crop:'ਤੁਹਾਡੀ ਫਸਲ', compare_suitability:'ਅਨੁਕੂਲਤਾ ਸਕੋਰ', compare_best:'ਸਭ ਤੋਂ ਵਧੀਆ ਮੇਲ', compare_note:'ਵੱਧ ਸਕੋਰ = ਤੁਹਾਡੇ ਖੇਤ ਲਈ ਬਿਹਤਰ ਮੇਲ।' },
+    Gujarati:{ langLabel:'🌐 ભાષા', tab_predict:'🌱 શ્રેષ્ઠ પાક અનુમાન', tab_yield:'🔍 ઉત્પાદન પૂછ', btn_predict:'શ્રેષ્ઠ પાક સૂચવો', btn_yield:'ઉત્પાદન અનુમાન ચકાસો', btn_fetch_weather:'હવામાન લાવો', lbl_recommended:'ભલામણ કરેલ પાક', fert_title:'🧪 ખાતર અને જમીન સુધારણા માર્ગદર્શિકા', fert_disclaimer:'માત્ર સામાન્ય માર્ગદર્શન. ચોક્કસ સૂચનો માટે સ્થાનિક નિષ્ણાતની સલાહ લો.',
+      optimal_badge:'✅ શ્રેષ્ઠ પસંદ', optimal_msg:'આ પાક તમારી વર્તમાન પરિસ્થિતિઓ માટે વાવવા યોગ્ય અને શ્રેષ્ઠ છે.',
+      not_optimal_badge:'⚠️ સારા વિકલ્પો ઉપલબ્ધ', not_optimal_msg:'તમે પસંદ કરેલ પાક વર્તમાન પરિસ્થિતિ માટે સૌથી સારો નથી. નીચેના વિકલ્પો ધ્યાનમાં લો.',
+      compare_title:'📊 પાક સરખામણી', compare_your_crop:'તમારો પાક', compare_suitability:'અનુકૂળતા સ્કોર', compare_best:'શ્રેષ્ઠ મેળ', compare_note:'વધુ સ્કોર = તમારા ખેત માટે સારો મેળ.' },
+    Odia:    { langLabel:'🌐 ଭାଷା', tab_predict:'🌱 ସର୍ବୋତ୍ତମ ଫସଲ ଅନୁମାନ', tab_yield:'🔍 ଅମଳ ଅନୁସନ୍ଧାନ', btn_predict:'ସର୍ବୋତ୍ତମ ଫସଲ ଅନୁମାନ', btn_yield:'ଅମଳ ଦୃଷ୍ଟିଭଙ୍ଗି ଯାଞ୍ଚ', btn_fetch_weather:'ମୌସୁମ ଆଣ', lbl_recommended:'ପ୍ରସ୍ତାବିତ ଫସଲ', fert_title:'🧪 ସାର ଓ ମାଟି ସଂଶୋଧନ ମାର୍ଗଦର୍ଶିକା', fert_disclaimer:'ସାଧାରଣ ମାର୍ଗଦର୍ଶନ ମାତ୍ର। ସଠିକ ପରାମର୍ଶ ପାଇଁ ସ୍ଥାନୀୟ ବିଶେଷଜ୍ଞଙ୍କୁ ଯୋଗାଯୋଗ କରନ୍ତୁ।',
+      optimal_badge:'✅ ସର୍ବୋତ୍ତମ ପସନ୍ଦ', optimal_msg:'ଏହି ଫସଲ ଆପଣଙ୍କ ବର୍ତ୍ତମାନ ପରିସ୍ଥିତିରେ ବୁଣିବା ପାଇଁ ଉପଯୁକ୍ତ ଓ ସର୍ବୋତ୍ତମ ଅଟେ।',
+      not_optimal_badge:'⚠️ ଭଲ ବିକଳ୍ପ ଉପଲବ୍ଧ', not_optimal_msg:'ଆପଣ ଚୟନ କରିଥିବା ଫସଲ ବର୍ତ୍ତମାନ ପରିସ୍ଥିତି ପାଇଁ ସର୍ବୋତ୍ତମ ନୁହେଁ। ତଳ ବିକଳ୍ପ ଦେଖନ୍ତୁ।',
+      compare_title:'📊 ଫସଲ ତୁଳନା', compare_your_crop:'ଆପଣଙ୍କ ଫସଲ', compare_suitability:'ଉପଯୁକ୍ତତା ସ୍କୋର', compare_best:'ସର୍ବୋତ୍ତମ ମିଳ', compare_note:'ଅଧିକ ସ୍କୋର = ଆପଣଙ୍କ ଜମି ପାଇଁ ଭଲ ମିଳ।' },
+  };
+  Object.entries(PARTIAL).forEach(([lang, overrides]) => {
+    UI_STRINGS[lang] = Object.assign({}, UI_STRINGS['English'], overrides);
+  });
+
+  /* ═══════════════════════════════════════════
+   *  VALIDATION
+   * ═══════════════════════════════════════════ */
+  const FIELD_BOUNDS = {
+    N: [0,140], P: [0,150], K: [0,210],
+    ph: [0,14], temperature: [-10,60],
+    humidity: [0,100], rainfall: [0,5000],
+  };
+
+  /* Show/hide inline error under a field */
+  function showFieldError(fieldId, msg) {
+    const el = document.getElementById(fieldId + '-error');
+    const inp = document.getElementById(fieldId);
+    if (el) { el.textContent = msg; el.classList.add('visible'); }
+    if (inp) inp.classList.add('input-error');
+  }
+  function clearFieldError(fieldId) {
+    const el = document.getElementById(fieldId + '-error');
+    const inp = document.getElementById(fieldId);
+    if (el) el.classList.remove('visible');
+    if (inp) inp.classList.remove('input-error');
+  }
+  function showFormError(pfx, msg) {
+    const el = document.getElementById(pfx + '-form-error');
+    const msgEl = document.getElementById(pfx + '-form-error-msg');
+    if (msgEl) msgEl.textContent = msg;
+    if (el) el.classList.add('visible');
+  }
+  function clearFormError(pfx) {
+    const el = document.getElementById(pfx + '-form-error');
+    if (el) el.classList.remove('visible');
+  }
+  function showWeatherWarning(pfx, show) {
+    const el = document.getElementById(pfx + '-weather-warning');
+    if (el) el.classList.toggle('visible', show);
+  }
+
+  /* Validate a single field on blur */
+  function validateSingleField(pfx, f) {
+    const lang = getSelectedLang();
+    const T = UI_STRINGS[lang] || UI_STRINGS['English'];
+    const raw = document.getElementById(`${pfx}-${f}`).value.trim();
+    if (raw === '') return; // don't error on empty unless submitting
+    const val = parseFloat(raw);
+    const errKey = 'err_' + f;
+    const [lo, hi] = FIELD_BOUNDS[f] || [0, Infinity];
+    if (isNaN(val) || val < lo || val > hi) {
+      showFieldError(`${pfx}-${f}`, T[errKey] || `Invalid value for ${f}.`);
+    }
+  }
+  function validateCropField() {
+    const val = document.getElementById('y-crop').value.trim();
+    if (!val) return;
+    // valid — clear
+    clearFieldError('y-crop');
+  }
+
+  /* Full form validation — returns parsed data or null */
+  function buildPayload(pfx) {
+    const lang = getSelectedLang();
+    const T = UI_STRINGS[lang] || UI_STRINGS['English'];
+    clearFormError(pfx);
+
+    // Clear all field errors first
+    ['N','P','K','ph','humidity','rainfall'].forEach(f => clearFieldError(`${pfx}-${f}`));
+
+    const data = { language: lang };
+    let firstError = null;
+
+    // Soil values
+    for (const f of ['N','P','K','ph']) {
+      const raw = document.getElementById(`${pfx}-${f}`).value.trim();
+      const errKey = 'err_' + f;
+      if (raw === '' || isNaN(parseFloat(raw))) {
+        showFieldError(`${pfx}-${f}`, T[errKey] || `Please enter ${f}.`);
+        if (!firstError) firstError = errKey;
+      } else {
+        const val = parseFloat(raw);
+        const [lo, hi] = FIELD_BOUNDS[f];
+        if (val < lo || val > hi) {
+          showFieldError(`${pfx}-${f}`, T[errKey] || `${f} must be between ${lo} and ${hi}.`);
+          if (!firstError) firstError = errKey;
+        } else {
+          data[f] = val;
+        }
+      }
+    }
+
+    // Temperature — must be fetched from weather API
+    const tempVal = document.getElementById(`${pfx}-temperature`).value.trim();
+    if (!tempVal || !weatherFetched[pfx]) {
+      showWeatherWarning(pfx, true);
+      if (!firstError) firstError = 'err_weather';
+    } else {
+      showWeatherWarning(pfx, false);
+      data['temperature'] = parseFloat(tempVal);
+    }
+
+    // Humidity — user typed manually
+    const humVal = document.getElementById(`${pfx}-humidity`).value.trim();
+    if (humVal === '' || isNaN(parseFloat(humVal))) {
+      showFieldError(`${pfx}-humidity`, 'Please enter humidity (0–100 %).');
+      if (!firstError) firstError = 'err_humidity';
+    } else {
+      const hv = parseFloat(humVal);
+      if (hv < 0 || hv > 100) {
+        showFieldError(`${pfx}-humidity`, 'Humidity must be between 0 and 100.');
+        if (!firstError) firstError = 'err_humidity';
+      } else {
+        clearFieldError(`${pfx}-humidity`);
+        data['humidity'] = hv;
+      }
+    }
+
+    // Rainfall
+    const rawRain = document.getElementById(`${pfx}-rainfall`).value.trim();
+    if (rawRain === '' || isNaN(parseFloat(rawRain))) {
+      showFieldError(`${pfx}-rainfall`, T.err_rainfall);
+      if (!firstError) firstError = 'err_rainfall';
+    } else {
+      const rv = parseFloat(rawRain);
+      if (rv < 0 || rv > 5000) {
+        showFieldError(`${pfx}-rainfall`, T.err_rainfall);
+        if (!firstError) firstError = 'err_rainfall';
+      } else {
+        data['rainfall'] = rv;
+      }
+    }
+
+    if (firstError) {
+      showFormError(pfx, T[firstError] || 'Please fix the errors above.');
+      // scroll to first error field
+      const errEl = document.querySelector(`#${pfx}-form-error`);
+      if (errEl) errEl.scrollIntoView({ behavior:'smooth', block:'nearest' });
+      return null;
+    }
+    return data;
+  }
+
+  /* ═══════════════════════════════════════════
+   *  LANGUAGE
+   * ═══════════════════════════════════════════ */
+  function getSelectedLang() {
+    return selectedLang;
+  }
+
+  function setLangPill(lang) {
+    selectedLang = lang;
+    // Update active pill
+    document.querySelectorAll('.lang-pill').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.lang === lang);
+    });
+    applyLang(lang);
+  }
+
+  /* Back to landing */
+  function backToLanding() {
+    document.getElementById('landing-page').style.display = 'flex';
+    document.getElementById('mainTabBar').style.display = 'none';
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    window.scrollTo({ top:0, behavior:'smooth' });
+  }
+
+  /* Landing page → mode selection */
+  function goToMode(mode) {
+    document.getElementById('landing-page').style.display = 'none';
+    document.getElementById('mainTabBar').style.display = 'flex';
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + mode).classList.add('active');
+    document.getElementById('tab-btn-' + mode).classList.add('active');
+  }
+
+  function applyLang(lang) {
+    const T = UI_STRINGS[lang] || UI_STRINGS['English'];
+
+    document.getElementById('langLabelEl').textContent = T.langLabel || '🌐';
+
+    // Landing page strings
+    const lh = document.getElementById('landing-h2');
+    const lp = document.getElementById('landing-p');
+    const lc1t = document.getElementById('lc-title-predict');
+    const lc1d = document.getElementById('lc-desc-predict');
+    const lc1c = document.getElementById('lc-cta-predict');
+    const lc2t = document.getElementById('lc-title-yield');
+    const lc2d = document.getElementById('lc-desc-yield');
+    const lc2c = document.getElementById('lc-cta-yield');
+    if (lh)  lh.innerHTML  = T.landing_h2  || 'Welcome to <em>CropSense</em>';
+    if (lp)  lp.textContent = T.landing_p  || 'Your AI-powered crop advisor. What would you like to do today?';
+    if (lc1t) lc1t.textContent = T.lc_predict_title || 'Crop Recommendation';
+    if (lc1d) lc1d.textContent = T.lc_predict_desc  || "Don't know what to grow? Enter your soil & location — we'll recommend the best crop for your field.";
+    if (lc1c) lc1c.textContent = T.lc_predict_cta   || 'Get Recommendation';
+    if (lc2t) lc2t.textContent = T.lc_yield_title   || 'Yield Query';
+    if (lc2d) lc2d.textContent = T.lc_yield_desc    || 'Already have a crop in mind? Check how suitable it is for your field conditions and get a yield outlook.';
+    if (lc2c) lc2c.textContent = T.lc_yield_cta     || 'Check Yield';
+    const backLabel = document.getElementById('back-home-label');
+    if (backLabel) backLabel.textContent = T.back_home || 'Home';
+
+    // Tabs
+    document.getElementById('tab-btn-predict').textContent = T.tab_predict;
+    document.getElementById('tab-btn-yield').textContent   = T.tab_yield;
+
+    // Hero
+    document.getElementById('hero1-h2').innerHTML = T.hero1_h2;
+    document.getElementById('hero1-p').textContent = T.hero1_p;
+    document.getElementById('hero2-h2').innerHTML = T.hero2_h2;
+    document.getElementById('hero2-p').textContent = T.hero2_p;
+
+    // Steps
+    ['p','y'].forEach(pfx => {
+      const steps = document.querySelectorAll(`#tab-${pfx === 'p' ? 'predict' : 'yield'} .step-label`);
+      if (pfx === 'p') {
+        if (steps[0]) steps[0].textContent = T.step_location;
+        if (steps[1]) steps[1].textContent = T.step_soil;
+        if (steps[2]) steps[2].textContent = T.step_result;
+      } else {
+        if (steps[0]) steps[0].textContent = T.step_location;
+        if (steps[1]) steps[1].textContent = T.step_crop;
+        if (steps[2]) steps[2].textContent = T.step_yield_result;
+      }
+    });
+
+    // Card titles
+    document.getElementById('p-card-title').textContent = T.card_location;
+    document.getElementById('y-card-title').textContent = T.card_location;
+
+    // Placeholders
+    ['p','y'].forEach(pfx => {
+      document.getElementById(`${pfx}-locationInput`).setAttribute('placeholder', T.loc_placeholder);
+      document.getElementById(`${pfx}-fetchBtnText`).textContent = T.btn_fetch_weather;
+      document.getElementById(`${pfx}-pill-temp-label`).textContent = T.pill_temp;
+      
+    });
+
+    // Section labels
+    document.getElementById('p-sec-soil').textContent    = T.sec_soil;
+    document.getElementById('p-sec-climate').textContent = T.sec_climate;
+    document.getElementById('y-sec-crop').textContent    = T.sec_crop;
+    document.getElementById('y-sec-soil').textContent    = T.sec_soil;
+    document.getElementById('y-sec-climate').textContent = T.sec_climate;
+
+    // Field labels, hints, placeholders
+    const FIELD_META = [
+      ['N',          T.lbl_N,    T.hint_N,    T.ph_N   ],
+      ['P',          T.lbl_P,    T.hint_P,    T.ph_P   ],
+      ['K',          T.lbl_K,    T.hint_K,    T.ph_K   ],
+      ['ph',         T.lbl_ph,   T.hint_ph,   T.ph_ph  ],
+      ['temperature',T.lbl_temp, T.hint_temp, T.ph_temp],
+      ['humidity',   T.lbl_hum,  T.hint_hum,  T.ph_hum ],
+      ['rainfall',   T.lbl_rain, T.hint_rain, T.ph_rain],
+    ];
+    ['p','y'].forEach(pfx => {
+      FIELD_META.forEach(([id, lbl, hint, ph]) => {
+        const lE = document.getElementById(`${pfx}-lbl-${id}`);
+        const hE = document.getElementById(`${pfx}-hint-${id}`);
+        const iE = document.getElementById(`${pfx}-${id}`);
+        if (lE) lE.textContent = lbl;
+        if (hE) hE.textContent = hint;
+        if (iE && !iE.value) iE.setAttribute('placeholder', ph);
+      });
+      // Rainfall note
+      const rn = document.getElementById(`${pfx}-rain-note`);
+      if (rn) rn.textContent = T.rain_note;
+      // Weather warning
+      const ww = document.getElementById(`${pfx}-weather-warning-msg`);
+      if (ww) ww.textContent = T.weather_warning;
+    });
+
+    // Yield crop field
+    const cropInput = document.getElementById('y-crop');
+    if (cropInput && !cropInput.value) cropInput.setAttribute('placeholder', T.ph_crop);
+    const yCropLbl = document.getElementById('y-lbl-crop');
+    const yCropHint = document.getElementById('y-hint-crop');
+    if (yCropLbl) yCropLbl.textContent = T.lbl_crop;
+    if (yCropHint) yCropHint.textContent = T.hint_crop;
+
+    // Buttons
+    const pBtn = document.getElementById('p-predictBtnText');
+    const yBtn = document.getElementById('y-queryBtnText');
+    if (pBtn) pBtn.textContent = T.btn_predict;
+    if (yBtn) yBtn.textContent = T.btn_yield;
+  }
+
+  /* ═══════════════════════════════════════════
+   *  TABS
+   * ═══════════════════════════════════════════ */
+  function switchTab(name, btn) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  /* ═══════════════════════════════════════════
+   *  AUTOCOMPLETE (shared, prefix = 'p' or 'y')
+   * ═══════════════════════════════════════════ */
+  function onLocationInput(pfx) {
+    const q = document.getElementById(`${pfx}-locationInput`).value.trim();
+    loc[pfx] = null;
+    clearTimeout(debounceTimers[pfx]);
+    if (q.length < 2) { hideAC(pfx); return; }
+    debounceTimers[pfx] = setTimeout(() => searchLoc(q, pfx), 380);
+  }
+
+  async function searchLoc(q, pfx) {
+    try {
+      const res = await fetch(`/geocode?q=${encodeURIComponent(q)}&limit=5`);
+      acResults[pfx] = await res.json();
+      showAC(pfx);
+    } catch { hideAC(pfx); }
+  }
+
+  function showAC(pfx) {
+    const list = document.getElementById(`${pfx}-autocompleteList`);
+    const results = acResults[pfx];
+    if (!results || !results.length) { hideAC(pfx); return; }
+    list.innerHTML = results.map((r,i) => {
+      const city = r.address.city||r.address.town||r.address.village||r.address.county||r.name;
+      const region = [r.address.state,r.address.country].filter(Boolean).join(', ');
+      return `<div class="autocomplete-item" onclick="selectLoc(${i},'${pfx}')"><div class="city">${city}</div><div class="region">${region}</div></div>`;
+    }).join('');
+    list.style.display = 'block'; selIdx[pfx] = -1;
+  }
+  function hideAC(pfx) { document.getElementById(`${pfx}-autocompleteList`).style.display='none'; selIdx[pfx]=-1; }
+
+  function onLocationKey(e, pfx) {
+    const items = document.querySelectorAll(`#${pfx}-autocompleteList .autocomplete-item`);
+    if (!items.length) return;
+    if (e.key==='ArrowDown') selIdx[pfx]=Math.min(selIdx[pfx]+1,items.length-1);
+    else if (e.key==='ArrowUp') selIdx[pfx]=Math.max(selIdx[pfx]-1,0);
+    else if (e.key==='Enter'&&selIdx[pfx]>=0){ selectLoc(selIdx[pfx],pfx); return; }
+    else return;
+    items.forEach((el,i)=>el.classList.toggle('selected',i===selIdx[pfx]));
+    e.preventDefault();
+  }
+
+  function selectLoc(i, pfx) {
+    const r = acResults[pfx][i];
+    const city = r.address.city||r.address.town||r.address.village||r.address.county||r.name;
+    const region = [r.address.state,r.address.country].filter(Boolean).join(', ');
+    loc[pfx] = { name:`${city}, ${region}`, lat:parseFloat(r.lat), lon:parseFloat(r.lon) };
+    document.getElementById(`${pfx}-locationInput`).value = loc[pfx].name;
+    hideAC(pfx);
+  }
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.location-input-wrap')) { hideAC('p'); hideAC('y'); }
+  });
+
+  /* ═══════════════════════════════════════════
+   *  FETCH WEATHER (shared)
+   * ═══════════════════════════════════════════ */
+  async function fetchWeather(pfx) {
+    const lang = getSelectedLang();
+    const T = UI_STRINGS[lang] || UI_STRINGS['English'];
+    if (!loc[pfx]) {
+      const q = document.getElementById(`${pfx}-locationInput`).value.trim();
+      if (!q) { showStatus(pfx, T.status_searching, 'error'); return; }
+      showStatus(pfx, T.status_searching, 'info');
+      try {
+        const res = await fetch(`/geocode?q=${encodeURIComponent(q)}&limit=1`);
+        const data = await res.json();
+        if (!data.length) { showStatus(pfx, T.status_not_found, 'error'); return; }
+        const r = data[0];
+        const city = r.address.city||r.address.town||r.address.village||r.address.county||r.name;
+        const region = [r.address.state,r.address.country].filter(Boolean).join(', ');
+        loc[pfx] = { name:`${city}, ${region}`, lat:parseFloat(r.lat), lon:parseFloat(r.lon) };
+        document.getElementById(`${pfx}-locationInput`).value = loc[pfx].name;
+      } catch { showStatus(pfx, T.status_loc_fail, 'error'); return; }
+    }
+
+    const btn = document.getElementById(`${pfx}-fetchBtn`);
+    btn.disabled=true;
+    document.getElementById(`${pfx}-fetchBtnText`).textContent = `${T.status_fetching}…`;
+    showStatus(pfx, `${T.status_fetching} ${loc[pfx].name}…`, 'info');
+
+    try {
+      const {lat,lon} = loc[pfx];
+      const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,precipitation&timezone=auto`);
+      const data = await res.json();
+      const cur = data.current;
+      setAF(`${pfx}-temperature`, cur.temperature_2m);
+      setPill(`${pfx}-pill-temp`, `${pfx}-pill-temp-val`, `${cur.temperature_2m} °C`);
+      weatherFetched[pfx] = true;
+      showWeatherWarning(pfx, false);
+      showStatus(pfx, `${T.status_fetched} ${loc[pfx].name}`, 'success');
+      setStep(pfx, 2);
+    } catch { showStatus(pfx, T.status_weather_fail, 'error'); }
+    finally {
+      btn.disabled = false;
+      document.getElementById(`${pfx}-fetchBtnText`).textContent = T.btn_fetch_weather;
+    }
+  }
+
+  function setAF(id, val) {
+    const el = document.getElementById(id);
+    el.value = val;
+    el.classList.add('auto-filled');
+  }
+  function setPill(pId, vId, text) {
+    document.getElementById(vId).textContent = text;
+    document.getElementById(pId).classList.add('fetched');
+  }
+  function showStatus(pfx, msg, type) {
+    const el = document.getElementById(`${pfx}-locationStatus`);
+    el.textContent = msg;
+    el.className = `status-msg ${type}`;
+  }
+  function setStep(pfx, n) {
+    for (let i=1; i<=3; i++) {
+      const el = document.getElementById(`${pfx}-step${i}`);
+      el.className = 'step' + (i<n?' done': i===n?' active':'');
+    }
+  }
+
+  /* ═══════════════════════════════════════════
+   *  CONFIDENCE UX HELPERS
+   * ═══════════════════════════════════════════ */
+  function getConfidenceUX(conf, T) {
+    if (conf >= 80) {
+      return { level:'high', label: T.conf_high_label || '✅ High confidence', explain: T.conf_high_explain || 'Strong match — your field conditions align well with this crop.' };
+    } else if (conf >= 50) {
+      return { level:'medium', label: T.conf_mid_label || '⚠️ Moderate confidence', explain: T.conf_mid_explain || 'Reasonable match — most conditions suit this crop.' };
+    } else {
+      return { level:'low', label: T.conf_low_label || '⚠ Low confidence', explain: T.conf_low_explain || 'Partial match — consider the alternatives below.' };
+    }
+  }
+
+  /* ═══════════════════════════════════════════
+   *  ALTERNATIVE CROP PANEL (accordion)
+   * ═══════════════════════════════════════════ */
+  /* Registry to store alt data keyed by card id — avoids passing JSON in onclick attrs */
+  const _altDataRegistry = {};
+
+  function renderAltCropSection(alternatives, T) {
+    if (!alternatives || !alternatives.length) return '';
+    const title = T.alt_title || 'Best Alternative Crops';
+
+    const cards = alternatives.map((alt, idx) => {
+      const emoji  = cropEmoji[alt.crop] || '🌿';
+      const name   = alt.name || alt.crop;
+      const conf   = alt.score != null ? ' · ' + alt.score + '%' : '';
+      const cardId = 'alt-card-' + idx;
+      // Store data in registry — safe from HTML attribute escaping issues
+      _altDataRegistry[cardId] = { cropKey: alt.crop, displayName: name };
+      return '<div class="alt-crop-card" id="' + cardId + '" onclick="toggleAltDetail(\'' + cardId + '\')">'
+        + '<span class="alt-emoji">' + emoji + '</span>'
+        + '<span class="alt-name">' + name + '</span>'
+        + '<span class="alt-conf">' + conf + '</span>'
+        + '<span class="alt-chevron">▾</span>'
+        + '</div>'
+        + '<div class="alt-detail-panel" id="alt-panel-' + idx + '">'
+        + '<div class="alt-detail-inner" id="alt-inner-' + idx + '"></div>'
+        + '</div>';
+    }).join('');
+
+    return '<div class="alternatives-section">'
+      + '<div class="alt-section-title">' + title + '</div>'
+      + '<div class="alt-cards-grid" id="alt-cards-grid">' + cards + '</div>'
+      + '</div>';
+  }
+
+  function toggleAltDetail(cardId) {
+    const idx   = cardId.replace('alt-card-', '');
+    const card  = document.getElementById(cardId);
+    const panel = document.getElementById('alt-panel-' + idx);
+    const inner = document.getElementById('alt-inner-' + idx);
+    if (!card || !panel || !inner) return;
+
+    const isOpen = panel.classList.contains('open');
+
+    // Close all open panels first
+    document.querySelectorAll('.alt-detail-panel.open').forEach(function(p) { p.classList.remove('open'); });
+    document.querySelectorAll('.alt-crop-card.open').forEach(function(c) { c.classList.remove('open'); });
+
+    if (!isOpen) {
+      card.classList.add('open');
+      panel.classList.add('open');
+      if (!inner.dataset.populated) {
+        var data = _altDataRegistry[cardId] || {};
+        inner.innerHTML = buildAltDetailHTML(data.cropKey || '', data.displayName || data.cropKey || '');
+        inner.dataset.populated = '1';
+      }
+    }
+  }
+
+  function buildAltDetailHTML(cropKey, displayName) {
+    const lang = getSelectedLang();
+    const T = UI_STRINGS[lang] || UI_STRINGS['English'];
+    const ideals = CROP_IDEALS[cropKey];
+    const title = (T.alt_ideals_title || 'Typical ideal conditions for') + ' ' + displayName;
+    const expertNote = T.alt_expert_note || 'Typical ranges only. Consult a local expert before changing crops.';
+
+    if (!ideals) {
+      return `<div class="alt-detail-title">${title}</div><p style="font-size:.82rem;color:var(--earth)">Condition data not available for this crop.</p>`;
+    }
+
+    const cells = [
+      { label:'Nitrogen (N)',   val:`${ideals.N[0]}–${ideals.N[1]}`, unit:'kg/ha' },
+      { label:'Phosphorus (P)', val:`${ideals.P[0]}–${ideals.P[1]}`, unit:'kg/ha' },
+      { label:'Potassium (K)',  val:`${ideals.K[0]}–${ideals.K[1]}`, unit:'kg/ha' },
+      { label:'Soil pH',        val:`${ideals.ph[0]}–${ideals.ph[1]}`, unit:'' },
+      { label:'Rainfall',       val:`${ideals.rain[0]}–${ideals.rain[1]}`, unit:'mm/yr' },
+    ].map(c => `
+      <div class="alt-detail-cell">
+        <div class="adc-label">${c.label}</div>
+        <div class="adc-val">${c.val} <span class="adc-unit">${c.unit}</span></div>
+      </div>`).join('');
+
+    return `
+      <div class="alt-detail-title">${title}</div>
+      <div class="alt-detail-grid">${cells}</div>
+      <div class="alt-expert-note">ℹ️ ${expertNote}</div>`;
+  }
+
+  /* ═══════════════════════════════════════════
+   *  FERTILIZER CARD RENDERER
+   * ═══════════════════════════════════════════ */
+  function renderFertilizer(fertData, cropDisplayName, T) {
+    if (!fertData || !fertData.length) return '';
+    T = T || UI_STRINGS['English'];
+    const lbl_your_value = T.lbl_your_value || 'Your value';
+    const lbl_ideal_for  = T.lbl_ideal_for  || 'Ideal for';
+    const disclaimer     = T.fert_disclaimer || 'General guidance only. Consult a local expert for precise recommendations.';
+    const statusIcon  = { good:'✅', low:'⚠️', excess:'🔴', high:'🔴' };
+    const statusLabel = {
+      good:   T.fert_good   || 'Good',
+      low:    T.fert_low    || 'Low — Apply Fertilizer',
+      excess: T.fert_excess || 'Excess — Skip Fertilizing',
+      high:   T.fert_high   || 'Too High — Amend Soil',
+    };
+    const lbl_dose   = T.lbl_dose   || 'Dose';
+    const lbl_timing = T.lbl_timing || 'Timing';
+    const lbl_method = T.lbl_method || 'Method';
+
+    const rows = fertData.map(item => {
+      const icon  = statusIcon[item.status]  || '•';
+      const label = statusLabel[item.status] || item.status;
+      let inner = '';
+      if (item.status === 'good') {
+        inner = '';
+      } else if (item.status === 'excess') {
+        const excessTpl = T.fert_excess_note_tpl || 'Excess {n} can harm the crop. Avoid nitrogen-heavy fertilizers this season.';
+        inner = `<div class="fert-excess-note">⚠️ ${excessTpl.replace('{n}', item.nutrient)}</div>`;
+      } else if ((item.status === 'low' || item.status === 'high') && item.fertilizers && item.fertilizers.length) {
+        const items = item.fertilizers.map(f => `
+          <div class="fert-item">
+            <div class="fert-item-name">🌿 ${f.name}</div>
+            <div class="fert-item-detail">
+              <span>${lbl_dose}:</span><span>${f.dose}</span>
+              <span>${lbl_timing}:</span><span>${f.timing}</span>
+              <span>${lbl_method}:</span><span>${f.method}</span>
+            </div>
+          </div>`).join('');
+        inner = `<div class="fert-suggestions">${items}</div>`;
+      }
+      return `
+        <div class="fert-row ${item.status}">
+          <div class="fert-row-header">
+            <div class="fert-nutrient">${icon} ${item.nutrient}</div>
+            <span class="fert-badge ${item.status}">${label}</span>
+          </div>
+          <div class="fert-values">${lbl_your_value}: <strong>${item.your_value}</strong> &nbsp;·&nbsp; ${lbl_ideal_for} ${cropDisplayName}: <strong>${item.ideal}</strong></div>
+          ${inner}
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="fert-card">
+        <div class="fert-title">${T.fert_title || '🧪 Fertilizer & Soil Amendment Guide'}</div>
+        <div class="fert-disclaimer">ℹ️ ${disclaimer}</div>
+        <div class="fert-rows">${rows}</div>
+      </div>`;
+  }
+
+  /* ═══════════════════════════════════════════
+   *  SMART YIELD DECISION BANNER
+   *  Shows optimal confirmation OR not-optimal warning
+   * ═══════════════════════════════════════════ */
+  function renderDecisionBanner(isOptimal, T) {
+    if (isOptimal) {
+      return `
+        <div class="decision-banner optimal">
+          <div class="decision-icon">✅</div>
+          <div class="decision-body">
+            <span class="decision-badge">${T.optimal_badge || '✅ Optimal Choice'}</span>
+            <div class="decision-msg">${T.optimal_msg || 'This crop is suitable and optimal for your current conditions.'}</div>
+          </div>
+        </div>`;
+    }
+    return `
+      <div class="decision-banner not-optimal">
+        <div class="decision-icon">⚠️</div>
+        <div class="decision-body">
+          <span class="decision-badge">${T.not_optimal_badge || '⚠️ Better Alternatives Available'}</span>
+          <div class="decision-msg">${T.not_optimal_msg || 'Your selected crop is not the best match. Consider the alternatives below.'}</div>
+        </div>
+      </div>`;
+  }
+
+  /* ═══════════════════════════════════════════
+   *  CROP COMPARISON BARS
+   *  Visual bar chart comparing selected crop vs top alternatives.
+   *  Only rendered when selected crop is NOT optimal.
+   * ═══════════════════════════════════════════ */
+  function renderComparisonSection(selectedCropName, selectedScore, topAlts, T) {
+    if (!topAlts || !topAlts.length) return '';
+
+    const title       = T.compare_title       || '📊 Crop Comparison';
+    const yourLabel   = T.compare_your_crop   || 'Your Crop';
+    const bestLabel   = T.compare_best        || 'Best Match';
+    const note        = T.compare_note        || 'Higher score = better match for your field conditions.';
+
+    // Build the full list: selected crop first, then top alternatives (max 3)
+    const allCrops = [
+      { name: selectedCropName, score: selectedScore, isSelected: true, isBest: false }
+    ];
+    topAlts.slice(0, 3).forEach((alt, i) => {
+      allCrops.push({ name: alt.name || alt.crop, score: alt.score, isSelected: false, isBest: i === 0, crop: alt.crop });
+    });
+
+    // Highest score in the full set — used for bar width normalisation
+    const maxScore = Math.max(...allCrops.map(c => c.score || 0), 1);
+
+    const rows = allCrops.map(c => {
+      const emoji   = c.isSelected ? (cropEmoji[document.getElementById('y-crop').value.trim().toLowerCase()] || '🌿') : (cropEmoji[c.crop] || '🌿');
+      const barPct  = Math.round(((c.score || 0) / maxScore) * 100);
+      const fillCls = c.isSelected ? 'selected-fill' : c.isBest ? 'best-fill' : 'other-fill';
+      const rowCls  = c.isSelected ? 'comparison-row selected-crop' : c.isBest ? 'comparison-row best-crop' : 'comparison-row';
+      const tagHtml = c.isSelected
+        ? `<span class="comp-tag your">${yourLabel}</span>`
+        : c.isBest ? `<span class="comp-tag best">${bestLabel}</span>` : '';
+
+      return `
+        <div class="${rowCls}">
+          <div class="comp-emoji">${emoji}</div>
+          <div class="comp-info">
+            <div class="comp-name">${c.name}${tagHtml}</div>
+          </div>
+          <div class="comp-bar-wrap">
+            <div class="comp-bar-bg">
+              <div class="comp-bar-fill ${fillCls}" style="width:0%" data-pct="${barPct}"></div>
+            </div>
+          </div>
+          <div class="comp-score">${c.score != null ? c.score + '%' : '—'}</div>
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="comparison-section" id="comparisonSection">
+        <div class="comparison-title">${title}</div>
+        <div class="comparison-rows">${rows}</div>
+        <div class="comparison-note">ℹ️ ${note}</div>
+      </div>`;
+  }
+
+  /* Animate comparison bars after DOM insertion */
+  function animateComparisonBars() {
+    requestAnimationFrame(() => setTimeout(() => {
+      document.querySelectorAll('.comp-bar-fill[data-pct]').forEach(bar => {
+        bar.style.width = bar.dataset.pct + '%';
+      });
+    }, 80));
+  }
+
+  /* ═══════════════════════════════════════════
+   *  PREDICT
+   * ═══════════════════════════════════════════ */
+  async function runPredict() {
+    const data = buildPayload('p');
+    if (!data) return;
+
+    const lang = getSelectedLang();
+    const T = UI_STRINGS[lang] || UI_STRINGS['English'];
+
+    const btn = document.getElementById('p-predictBtn');
+    btn.classList.add('loading');
+    document.getElementById('p-predictBtnText').textContent = T.loading_analyzing;
+    setStep('p', 3);
+
+    const resultEl = document.getElementById('predict-result');
+    resultEl.style.display = 'block';
+    resultEl.innerHTML = `
+      <div class="result-card">
+        <div class="result-top">
+          <div class="crop-icon">🌱</div>
+          <div class="result-text">
+            <div class="rlabel">${T.lbl_recommended}</div>
+            <div class="crop-name" style="opacity:.45">${T.loading_analyzing}</div>
+          </div>
+        </div>
+        <div class="explanation-box">
+          <div class="exp-label">💡 ${T.lbl_why}</div>
+          <div class="exp-loading"><div class="spinner"></div> ${T.lbl_generating} ${lang}…</div>
+        </div>
+      </div>`;
+
+    try {
+      const res = await fetch('/predict', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) });
+      const rawText = await res.text();
+      let json;
+      try { json = JSON.parse(rawText); } catch {
+        resultEl.innerHTML = `<div class="error-card">⚠️ Unexpected server response.<br><pre style="font-size:.8rem;margin-top:.5rem;white-space:pre-wrap">${rawText.slice(0,400)}</pre></div>`;
+        return;
+      }
+      if (json.error) { resultEl.innerHTML = `<div class="error-card">⚠️ ${json.error}</div>`; return; }
+
+      const ui = json.ui || {};
+      const lbl_recommended = ui.recommended_crop || T.lbl_recommended;
+      const lbl_why         = ui.why_this_crop    || T.lbl_why;
+
+      const expText = (json.explanation && json.explanation.trim().length > 0)
+        ? json.explanation.trim() : 'Explanation not available.';
+      const emoji       = cropEmoji[json.crop] || '🌿';
+      const displayName = json.crop_name || json.crop;
+      const locLine     = loc.p ? `<div class="location-used">📍 ${loc.p.name}</div>` : '';
+      const confUX      = getConfidenceUX(json.confidence, T);
+
+      // Build alternatives: prefer server top_alternatives, else fall back to best_alternative
+      const alts = [];
+      if (json.top_alternatives && json.top_alternatives.length) {
+        json.top_alternatives.forEach(a => alts.push({ crop: a.crop, name: a.name || a.crop, score: a.score }));
+      } else if (json.best_alternative) {
+        alts.push({ crop: json.best_alternative, name: json.best_alternative_name || json.best_alternative, score: null });
+      }
+
+      resultEl.innerHTML = `
+        <div class="result-card">
+          <div class="result-top">
+            <div class="crop-icon">${emoji}</div>
+            <div class="result-text">
+              <div class="rlabel">${lbl_recommended}</div>
+              <div class="crop-name">${displayName}</div>
+              ${locLine}
+              <div class="confidence-bar-wrap">
+                <div class="confidence-bar-bg"><div class="confidence-bar-fill" id="confBar" style="width:0%"></div></div>
+                <span class="confidence-pct">${json.confidence}%</span>
+              </div>
+              <span class="conf-level-badge ${confUX.level}">${confUX.label}</span>
+            </div>
+          </div>
+          <div class="conf-explain">${confUX.explain}</div>
+          <div class="explanation-box">
+            <div class="exp-label">💡 ${lbl_why} · ${json.language}</div>
+            <div class="exp-text">${expText}</div>
+          </div>
+        </div>
+        ${renderAltCropSection(alts, T)}
+        ${renderFertilizer(json.fertilizer, displayName, T)}`;
+
+      requestAnimationFrame(() => setTimeout(() => {
+        const b = document.getElementById('confBar');
+        if (b) b.style.width = json.confidence + '%';
+      }, 60));
+
+    } catch(err) {
+      resultEl.innerHTML = `<div class="error-card">⚠️ Could not connect to server. Is Flask running?<br><small>${err.message}</small></div>`;
+    } finally {
+      btn.classList.remove('loading');
+      document.getElementById('p-predictBtnText').textContent = T.btn_predict;
+    }
+  }
+
+  /* ═══════════════════════════════════════════
+   *  YIELD QUERY
+   * ═══════════════════════════════════════════ */
+  async function runYieldQuery() {
+    const lang = getSelectedLang();
+    const T = UI_STRINGS[lang] || UI_STRINGS['English'];
+
+    // Validate crop field first
+    const crop = document.getElementById('y-crop').value.trim().toLowerCase();
+    clearFieldError('y-crop');
+    if (!crop) {
+      showFieldError('y-crop', T.err_crop);
+      showFormError('y', T.err_crop);
+      return;
+    }
+
+    const data = buildPayload('y');
+    if (!data) return;
+    data.crop = crop;
+
+    const btn = document.getElementById('y-queryBtn');
+    btn.classList.add('loading');
+    document.getElementById('y-queryBtnText').textContent = T.loading_checking;
+    setStep('y', 3);
+
+    const resultEl = document.getElementById('yield-result');
+    resultEl.style.display = 'block';
+    const emoji = cropEmoji[crop] || '🌿';
+    resultEl.innerHTML = `
+      <div class="yield-card green">
+        <div class="yield-top">
+          <div class="yield-icon">${emoji}</div>
+          <div class="yield-meta">
+            <div class="rlabel">${T.lbl_yield_for}</div>
+            <div class="yield-crop">${crop}</div>
+            <div class="yield-outlook" style="opacity:.5">${T.lbl_calculating}</div>
+          </div>
+        </div>
+        <div class="yield-analysis-box">
+          <div class="exp-label">${T.lbl_yield_analysis}</div>
+          <div class="exp-loading"><div class="spinner"></div> ${T.lbl_generating} ${lang}…</div>
+        </div>
+      </div>`;
+
+    try {
+      const res = await fetch('/yield_query', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) });
+      const rawText = await res.text();
+      let json;
+      try { json = JSON.parse(rawText); } catch {
+        resultEl.innerHTML = `<div class="error-card">⚠️ Unexpected server response.<br><pre style="font-size:.8rem;margin-top:.5rem;white-space:pre-wrap">${rawText.slice(0,400)}</pre></div>`;
+        return;
+      }
+      if (json.error) { resultEl.innerHTML = `<div class="error-card">⚠️ ${json.error}</div>`; return; }
+
+      const ui            = json.ui || {};
+      const lbl_yield_for     = ui.yield_outlook_for || T.lbl_yield_for;
+      const lbl_yield_analysis= ui.yield_analysis    || T.lbl_yield_analysis;
+      const lbl_match         = ui.match_label        || T.lbl_match;
+      const lbl_best_crop     = ui.best_crop_label    || T.lbl_best_crop;
+      const outlookLabel      = json.outlook_label    || json.outlook;
+
+      const analysis = (json.analysis && json.analysis.trim().length > 0)
+        ? json.analysis.trim() : 'Analysis not available.';
+      const displayName = json.crop_name || json.crop;
+      const bestAltName = json.best_alternative_name || json.best_alternative;
+      const locLine     = loc.y ? `<div class="location-used" style="font-size:.78rem;opacity:.7;margin-top:.2rem">📍 ${loc.y.name}</div>` : '';
+      const unknownNote = !json.known_crop
+        ? `<div style="font-size:.78rem;opacity:.7;margin-top:.2rem">${T.unknown_note_pre}${json.crop}" ${T.not_in_training}</div>` : '';
+
+      /* ── Smart yield decision ──────────────────────────────────────────── */
+      const isOptimal   = !!json.is_optimal;
+      const topAlts     = json.top_alternatives || [];
+
+      // Decision banner: ✅ optimal OR ⚠️ not optimal
+      const decisionHTML = renderDecisionBanner(isOptimal, T);
+
+      // Comparison bars: only when not optimal
+      const comparisonHTML = !isOptimal
+        ? renderComparisonSection(displayName, json.suitability_score, topAlts, T)
+        : '';
+
+      // Alternative crop detail accordions: only when not optimal
+      const altsHTML = (!isOptimal && topAlts.length)
+        ? renderYieldAltSection(topAlts, T)
+        : '';
+
+      resultEl.innerHTML = `
+        <div class="yield-card ${json.outlook_color}">
+          <div class="yield-top">
+            <div class="yield-icon">${emoji}</div>
+            <div class="yield-meta">
+              <div class="rlabel">${lbl_yield_for}</div>
+              <div class="yield-crop">${displayName}</div>
+              <div class="yield-outlook">📊 ${outlookLabel}</div>
+              ${locLine}
+              ${unknownNote}
+            </div>
+          </div>
+          <div class="yield-stats">
+            <div class="yield-stat">
+              <div class="stat-val">${json.suitability_score}%</div>
+              <div class="stat-label">${lbl_match} ${displayName}</div>
+            </div>
+            <div class="yield-stat">
+              <div class="stat-val" style="font-size:1rem;text-transform:capitalize">${bestAltName}</div>
+              <div class="stat-label">${lbl_best_crop}</div>
+            </div>
+          </div>
+          <div class="yield-analysis-box">
+            <div class="exp-label">${lbl_yield_analysis} · ${json.language}</div>
+            <div class="exp-text">${analysis}</div>
+          </div>
+        </div>
+        ${decisionHTML}
+        ${comparisonHTML}
+        ${altsHTML}
+        ${renderFertilizer(json.fertilizer, displayName, T)}`;
+
+      // Animate comparison bars after DOM is painted
+      if (!isOptimal) animateComparisonBars();
+
+    } catch(err) {
+      resultEl.innerHTML = `<div class="error-card">⚠️ Could not connect to server. Is Flask running?<br><small>${err.message}</small></div>`;
+    } finally {
+      btn.classList.remove('loading');
+      document.getElementById('y-queryBtnText').textContent = T.btn_yield;
+    }
+  }
+
+  /* Yield tab alternative section (same accordion pattern) */
+  function renderYieldAltSection(alts, T) {
+    if (!alts || !alts.length) return '';
+    const title = T.alt_title || 'Best Alternative Crops';
+    const cards = alts.map((alt, idx) => {
+      const emoji = cropEmoji[alt.crop] || '🌿';
+      const name  = alt.name || alt.crop;
+      const conf  = alt.score != null ? ` · ${alt.score}%` : '';
+      const panelId = `y-alt-panel-${idx}`;
+      const cardId  = `y-alt-card-${idx}`;
+      const innerId = `y-alt-inner-${idx}`;
+      return `
+        <div class="alt-crop-card" id="${cardId}" onclick="toggleYieldAlt(${idx}, '${alt.crop}', '${encodeURIComponent(name)}')">
+          <span class="alt-emoji">${emoji}</span>
+          <span class="alt-name">${name}</span>
+          <span class="alt-conf">${conf}</span>
+          <span class="alt-chevron">▾</span>
+        </div>
+        <div class="alt-detail-panel" id="${panelId}">
+          <div class="alt-detail-inner" id="${innerId}"></div>
+        </div>`;
+    }).join('');
+    return `<div class="yield-alt-section"><div class="alt-section-title">${title}</div><div class="alt-cards-grid">${cards}</div></div>`;
+  }
+
+  function toggleYieldAlt(idx, cropKey, encodedName) {
+    const card  = document.getElementById(`y-alt-card-${idx}`);
+    const panel = document.getElementById(`y-alt-panel-${idx}`);
+    const inner = document.getElementById(`y-alt-inner-${idx}`);
+    if (!card || !panel) return;
+    const isOpen = panel.classList.contains('open');
+    document.querySelectorAll('.alt-detail-panel.open').forEach(p => p.classList.remove('open'));
+    document.querySelectorAll('.alt-crop-card.open').forEach(c => c.classList.remove('open'));
+    if (!isOpen) {
+      card.classList.add('open');
+      panel.classList.add('open');
+      if (!inner.dataset.populated) {
+        inner.innerHTML = buildAltDetailHTML(cropKey, decodeURIComponent(encodedName));
+        inner.dataset.populated = '1';
+      }
+    }
+  }
+
+  /* ═══════════════════════════════════════════
+   *  HELPERS
+   * ═══════════════════════════════════════════ */
+  function getField(pfx, f) {
+    return document.getElementById(`${pfx}-${f}`).value.trim();
+  }
+
+</script>
+</body>
+</html>
