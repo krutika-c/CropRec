@@ -45,3 +45,7 @@ based on soil and climate conditions.
 pip install -r requirements.txt
 python app.py
 ```
+## Contributors
+
+##KSHETRAGNA
+##KRUTIKA
